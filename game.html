@@ -1,0 +1,1729 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>도토리 캐치 - 이상한 동물도감 몬스터 뽑기 게임</title>
+<meta name="description" content="귀여운 동물 몬스터를 뽑고, 도토리 캐치 미니게임으로 점수를 겨루는 무료 웹 게임. 등급별 몬스터 20종, 콤보와 파워업, 랭킹까지 한 번에 즐겨보세요.">
+<link rel="canonical" href="https://example.com/game.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A6%8A%3C/text%3E%3C/svg%3E">
+<meta property="og:title" content="도토리 캐치 - 이상한 동물도감 몬스터 뽑기 게임">
+<meta property="og:description" content="귀여운 동물 몬스터를 뽑고, 도토리 캐치 미니게임으로 점수를 겨루는 무료 웹 게임.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://example.com/game.html">
+<meta property="og:locale" content="ko_KR">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoGame","name":"도토리 캐치","genre":"Arcade","applicationCategory":"Game","operatingSystem":"Any (Web Browser)","description":"귀여운 동물 몬스터를 뽑고 도토리 캐치 미니게임으로 점수를 겨루는 무료 브라우저 게임","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"}}</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Nunito:wght@500;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root{
+  --ink:#1b1a24;
+  --ink-soft:#252332;
+  --paper:#f1e9d8;
+  --paper-dim:#d8ceb4;
+  --moss:#6fae7c;
+  --slate:#6c9fd6;
+  --rose:#e0688f;
+  --amber:#f5b93d;
+  --line: rgba(232,223,200,0.14);
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:transparent;}
+body{
+  font-family:'Nunito',sans-serif;
+  color:var(--paper);
+  min-height:100%;
+  padding:24px 16px 60px;
+}
+.app{ max-width:720px; margin:0 auto; }
+
+/* header */
+.masthead{
+  display:flex; align-items:flex-end; justify-content:space-between;
+  border-bottom:1px solid var(--line);
+  padding-bottom:14px; margin-bottom:18px; gap:12px; flex-wrap:wrap;
+}
+.masthead h1{
+  font-family:'Fraunces',serif; font-weight:700; font-size:28px;
+  letter-spacing:-0.01em; margin:0;
+}
+.masthead .sub{ font-size:12.5px; color:var(--paper-dim); margin-top:4px; font-style:italic; }
+.dex-count{
+  font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--paper-dim);
+  background:var(--ink-soft); border:1px solid var(--line);
+  padding:6px 10px; border-radius:6px; white-space:nowrap;
+}
+.dex-count b{ color:var(--amber); }
+
+/* tabs */
+.tabs{ display:flex; gap:2px; margin-bottom:20px; border-bottom:1px solid var(--line); }
+.tab-btn{
+  font-family:'Fraunces',serif; font-size:14.5px; font-weight:700;
+  background:none; border:none; color:var(--paper-dim);
+  padding:10px 4px; margin-right:22px; cursor:pointer; position:relative; letter-spacing:0.01em;
+}
+.tab-btn.active{ color:var(--paper); }
+.tab-btn.active::after{
+  content:''; position:absolute; left:0; right:0; bottom:-1px; height:2px; background:var(--amber);
+}
+
+.view{ display:none; }
+.view.active{ display:block; }
+
+/* ---- pull view ---- */
+.stage{
+  background:var(--ink-soft); border:1px solid var(--line); border-radius:14px;
+  padding:32px 20px 26px; display:flex; flex-direction:column; align-items:center;
+  min-height:400px; justify-content:center; position:relative; overflow:hidden;
+}
+.stage-idle{ text-align:center; color:var(--paper-dim); font-size:13.5px; line-height:1.6; }
+.stage-idle .glyph{ font-family:'Fraunces',serif; font-size:46px; color:var(--paper-dim); opacity:0.5; margin-bottom:10px; }
+
+.creature-wrap{ position:relative; }
+.creature-wrap svg{ display:block; width:100%; height:100%; overflow:visible; }
+
+.burst{ position:absolute; inset:0; pointer-events:none; }
+.burst span{
+  position:absolute; top:50%; left:50%; width:7px; height:7px; border-radius:50%;
+  transform:translate(-50%,-50%); animation:burstfly 0.8s ease-out forwards;
+}
+@keyframes burstfly{ to{ transform:translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))); opacity:0; } }
+@keyframes revealpop{
+  0%{ transform:scale(0.35) rotate(-8deg); opacity:0; }
+  60%{ transform:scale(1.08) rotate(2deg); opacity:1; }
+  100%{ transform:scale(1) rotate(0deg); opacity:1; }
+}
+.pop{ animation: revealpop 0.55s cubic-bezier(.2,.9,.3,1.2); }
+
+.action-row{ display:flex; gap:10px; margin-top:22px; flex-wrap:wrap; justify-content:center; }
+.btn{
+  font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px; border:none;
+  border-radius:9px; padding:12px 18px; cursor:pointer; transition:transform 0.12s ease, opacity 0.12s ease;
+}
+.btn:active{ transform:scale(0.96); }
+.btn:disabled{ opacity:0.35; cursor:not-allowed; }
+.btn-primary{ background:var(--amber); color:#241d0a; }
+.btn-ghost{ background:transparent; color:var(--paper); border:1px solid var(--line); }
+.btn small{ display:block; font-weight:600; font-size:10.5px; opacity:0.75; margin-top:2px; font-family:'JetBrains Mono',monospace; }
+
+/* ---- dex view ---- */
+.dex-grid{ display:block; }
+.dex-section{ margin-bottom:20px; }
+.dex-section-title{
+  font-family:'Fraunces',serif; font-weight:800; font-size:14px;
+  margin-bottom:9px; padding-bottom:5px; border-bottom:1px solid var(--line);
+}
+.dex-grid-inner{ display:grid; grid-template-columns:repeat(auto-fill, minmax(120px,1fr)); gap:10px; }
+.dex-card{
+  background:var(--ink-soft); border:2px solid var(--line); border-radius:10px;
+  padding:10px 8px 9px; text-align:center; cursor:pointer; transition:border-color 0.15s ease, transform 0.15s ease;
+}
+.dex-card:hover{ border-color:var(--rc); transform:translateY(-2px); }
+.dex-thumb{ width:76px; height:82px; margin:0 auto 6px; position:relative; }
+@property --border-angle{
+  syntax:'<angle>'; inherits:false; initial-value:0deg;
+}
+
+.dex-card.locked .dex-thumb{ opacity:0.4; filter:brightness(0) invert(1); }
+.dex-name{ font-family:'Fraunces',serif; font-size:12.5px; font-weight:700; line-height:1.25; }
+.dex-card.locked .dex-name{ color:var(--paper-dim); }
+.dex-owned{ font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--paper-dim); margin-top:3px; }
+.dex-badge{ display:inline-block; width:6px; height:6px; border-radius:50%; margin-bottom:5px; }
+
+.legend{
+  display:flex; gap:14px; flex-wrap:wrap; margin-top:16px; padding-top:14px;
+  border-top:1px solid var(--line); font-size:11px; color:var(--paper-dim); font-family:'JetBrains Mono',monospace;
+}
+.legend span{ display:flex; align-items:center; gap:5px; }
+.legend i{ width:7px; height:7px; border-radius:50%; display:inline-block; }
+
+/* streak / daily hint */
+.streak-badge{
+  font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--paper-dim);
+  background:var(--ink-soft); border:1px solid var(--line);
+  padding:6px 10px; border-radius:6px; white-space:nowrap;
+}
+.streak-badge b{ color:#ff8a5c; }
+.daily-hint{
+  font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--amber);
+  text-align:center; margin-top:14px; min-height:14px;
+}
+.btn-primary.guarantee{ animation: btnPulse 1.5s ease-in-out infinite; }
+@keyframes btnPulse{
+  0%,100%{ box-shadow:0 0 6px var(--amber); }
+  50%{ box-shadow:0 0 22px var(--amber); }
+}
+
+/* toast */
+.toast{
+  position:fixed; top:16px; left:50%; transform:translateX(-50%) translateY(-16px);
+  background:var(--ink-soft); border:1px solid var(--amber); color:var(--paper);
+  padding:10px 18px; border-radius:10px; font-family:'Nunito',sans-serif; font-weight:800; font-size:13px;
+  opacity:0; transition:all 0.3s ease; z-index:100; box-shadow:0 8px 24px rgba(0,0,0,0.45);
+  max-width:88vw; text-align:center;
+}
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* ---- specimen card ---- */
+.spec-card{
+  width:250px; border-radius:18px; padding:14px 14px 12px; position:relative; overflow:hidden;
+  background:linear-gradient(180deg, var(--ink-soft), var(--ink));
+  border:3px solid var(--rc);
+  box-shadow:0 10px 30px rgba(0,0,0,0.45);
+}
+.spec-card.rarity-rare{ box-shadow:0 0 14px var(--rc), 0 10px 30px rgba(0,0,0,0.45); }
+.spec-card.rarity-epic{ animation:cardGlow 2.6s ease-in-out infinite; }
+.spec-card.rarity-legendary{
+  border:4px solid transparent;
+  background:
+    linear-gradient(180deg, var(--ink-soft), var(--ink)) padding-box,
+    conic-gradient(from var(--border-angle), #ff5c8a, #ffd15c, #6cf7c1, #5ca8ff, #b17bff, #ff5c8a) border-box;
+  animation: legendGlow 2.4s ease-in-out infinite, spinBorder 3s linear infinite;
+}
+@keyframes cardGlow{
+  0%,100%{ box-shadow:0 0 14px var(--rc), 0 10px 30px rgba(0,0,0,0.45); }
+  50%{ box-shadow:0 0 36px var(--rc), 0 10px 30px rgba(0,0,0,0.45); }
+}
+@keyframes legendGlow{
+  0%,100%{ box-shadow:0 0 16px var(--rc), 0 10px 30px rgba(0,0,0,0.45); }
+  50%{ box-shadow:0 0 38px var(--rc), 0 10px 30px rgba(0,0,0,0.45); }
+}
+@keyframes spinBorder{ to{ --border-angle:360deg; } }
+.spec-card .sweep{
+  position:absolute; inset:0;
+  background:linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.55) 48%, transparent 62%);
+  transform:translateX(-160%); pointer-events:none;
+}
+.spec-card.rarity-epic .sweep, .spec-card.rarity-legendary .sweep{ animation: sweepMove 2.4s ease-in-out infinite; }
+@keyframes sweepMove{
+  0%{ transform:translateX(-160%); } 55%{ transform:translateX(160%); } 100%{ transform:translateX(160%); }
+}
+
+.spec-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:9px; position:relative; z-index:2; }
+.spec-pill{
+  font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:0.06em; color:var(--rc);
+  border:1px solid var(--rc); border-radius:20px; padding:2px 8px;
+}
+.spec-stat{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--paper-dim); }
+.spec-stat b{ color:var(--paper); }
+.spec-illust{
+  background:var(--paper); border-radius:12px; height:172px; position:relative; overflow:hidden;
+  margin-bottom:10px; z-index:2;
+}
+.spec-illust .creature-wrap{ position:absolute; inset:6%; }
+.spec-name-row{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:8px; position:relative; z-index:2; }
+.spec-name{ font-family:'Fraunces',serif; font-weight:700; font-size:19px; }
+.spec-rarity-label{ font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--rc); font-weight:600; }
+.spec-ability{
+  background:var(--ink); border-left:3px solid var(--rc); border-radius:6px;
+  padding:9px 10px; margin-bottom:10px; position:relative; z-index:2;
+}
+.spec-ability .lbl{ font-family:'JetBrains Mono',monospace; font-size:9.5px; color:var(--rc); letter-spacing:0.06em; margin-bottom:3px; }
+.spec-ability .txt{ font-size:12px; line-height:1.55; color:var(--paper-dim); }
+.spec-foot{
+  display:flex; justify-content:space-between; align-items:center;
+  font-family:'JetBrains Mono',monospace; font-size:9.5px; color:var(--paper-dim);
+  border-top:1px dashed var(--line); padding-top:8px; position:relative; z-index:2;
+}
+.spec-tag{ font-size:9.5px; padding:2px 7px; border-radius:20px; background:var(--rc); color:#1b1a24; font-weight:800; }
+
+/* dex modal */
+.modal-overlay{
+  display:none; position:fixed; inset:0; background:rgba(10,9,14,0.72);
+  align-items:center; justify-content:center; z-index:50; padding:20px;
+}
+.modal-overlay.open{ display:flex; }
+.modal-close{
+  position:absolute; top:-14px; right:-14px; width:30px; height:30px; border-radius:50%;
+  background:var(--amber); border:none; color:#1b1a24; font-family:'Nunito',sans-serif;
+  font-weight:800; cursor:pointer; z-index:5;
+}
+.modal-inner{ position:relative; }
+
+.footnote{
+  margin-top:26px; font-size:11px; color:var(--paper-dim); border-top:1px solid var(--line);
+  padding-top:12px; line-height:1.6;
+}
+.ad-slot{
+  margin-top:16px; min-height:90px; border:1px dashed var(--line); border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--paper-dim);
+  background:var(--ink-soft);
+}
+
+/* ---- mini game ---- */
+.char-picker{ display:flex; gap:8px; overflow-x:auto; padding-bottom:10px; margin-bottom:14px; }
+.char-pick-item{
+  width:58px; height:58px; border-radius:10px; background:var(--ink-soft);
+  border:2px solid var(--line); flex:0 0 auto; cursor:pointer; position:relative;
+}
+.char-pick-item.selected{ border-color:var(--amber); }
+.char-pick-item .creature-wrap{ position:absolute; inset:8%; }
+.game-area{
+  position:relative; width:100%; aspect-ratio:16/9; margin:0 auto;
+  background:linear-gradient(180deg, var(--ink-soft), var(--ink));
+  border:1px solid var(--line); border-radius:14px; overflow:hidden; touch-action:none;
+}
+.game-area canvas{ position:absolute; inset:0; width:100%; height:100%; }
+.game-player{
+  position:absolute; width:60px; height:64px; bottom:12px; transform:translateX(-50%);
+  pointer-events:none; filter:drop-shadow(0 4px 8px rgba(0,0,0,0.4)); z-index:2;
+}
+.game-hud{
+  position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between;
+  font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--paper-dim);
+  background:rgba(0,0,0,0.32); padding:6px 10px; border-radius:8px; z-index:3;
+}
+.game-hud b{ color:var(--paper); }
+.game-overlay{
+  position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+  background:rgba(10,9,14,0.78); flex-direction:column; text-align:center; padding:20px; z-index:4;
+}
+.game-overlay.show{ display:flex; }
+.game-hint{
+  text-align:center; font-size:11.5px; color:var(--paper-dim); margin-top:12px;
+  font-family:'JetBrains Mono',monospace;
+}
+
+/* 캐릭터 파괴 모션 */
+.game-player.shatter{ animation: shatterShake 0.38s ease; }
+@keyframes shatterShake{
+  0%{ transform:translateX(-50%) scale(1) rotate(0deg); opacity:1; }
+  20%{ transform:translateX(-50%) scale(0.88) rotate(-10deg); opacity:0.6; }
+  40%{ transform:translateX(-50%) scale(1.06) rotate(9deg); opacity:1; }
+  60%{ transform:translateX(-50%) scale(0.85) rotate(-7deg); opacity:0.55; }
+  100%{ transform:translateX(-50%) scale(1) rotate(0deg); opacity:1; }
+}
+
+/* 화면 흔들림 (충돌 시) */
+.game-area.shake{ animation: shakeHit 0.3s ease; }
+@keyframes shakeHit{
+  0%,100%{ transform:translateX(0); }
+  20%{ transform:translateX(-9px); } 40%{ transform:translateX(8px); }
+  60%{ transform:translateX(-6px); } 80%{ transform:translateX(5px); }
+}
+
+/* 500점 프렌지 모드 : 색상 왜곡 대신 강한 테두리 펄스로 (가독성 유지) */
+.game-area.frenzy{ animation: frenzyPulse 0.55s ease-in-out infinite; }
+@keyframes frenzyPulse{
+  0%,100%{ box-shadow: inset 0 0 0 3px rgba(245,185,61,0.15), 0 0 20px rgba(245,185,61,0.25); }
+  50%{ box-shadow: inset 0 0 0 3px rgba(245,185,61,0.65), 0 0 42px rgba(245,185,61,0.6); }
+}
+
+/* 콤보 & 점수 팝업 */
+.combo-badge{
+  position:absolute; top:44px; left:50%; transform:translateX(-50%) scale(0.8);
+  font-family:'Fraunces',serif; font-weight:800; font-size:19px; color:var(--amber);
+  text-shadow:0 2px 10px rgba(0,0,0,0.7); opacity:0; transition:opacity 0.12s, transform 0.12s;
+  z-index:3; pointer-events:none;
+}
+.combo-badge.show{ opacity:1; transform:translateX(-50%) scale(1.08); }
+.score-pop{
+  position:absolute; font-family:'JetBrains Mono',monospace; font-weight:800; font-size:15px;
+  pointer-events:none; animation:popFloat 0.7s ease-out forwards; z-index:5;
+  text-shadow:0 2px 6px rgba(0,0,0,0.6);
+}
+@keyframes popFloat{
+  0%{ transform:translate(-50%,0); opacity:1; }
+  100%{ transform:translate(-50%,-38px); opacity:0; }
+}
+
+/* 100점 진입 시 등장하는 독수리 이벤트: 박스가 아니라 새 형태 자체가 날개를 펼치며 세로 1/4 정도를 가림 */
+.eagle-event{
+  position:absolute; top:6%; line-height:1;
+  animation: eagleSweep 3.2s ease-in-out forwards;
+  z-index:6; pointer-events:none;
+  filter:drop-shadow(0 10px 16px rgba(0,0,0,0.55));
+  transform-origin:center;
+}
+@keyframes eagleSweep{
+  0%{ left:130%; transform:scaleX(-1) scale(0.8); }
+  15%{ left:22%; transform:scaleX(-1) scale(1.3); }
+  75%{ left:22%; transform:scaleX(-1) scale(1.3); }
+  100%{ left:-110%; transform:scaleX(-1) scale(0.85); }
+}
+
+/* 뽑기 3장 셔플 */
+.shuffle-row{ display:flex; gap:14px; justify-content:center; align-items:center; margin-bottom:16px; }
+.shuffle-card{
+  width:96px; height:122px; border-radius:12px; background:var(--ink);
+  border:2px solid var(--line); display:flex; flex-direction:column; align-items:center;
+  justify-content:center; position:relative; transition:transform 0.18s ease, opacity 0.18s ease;
+}
+.shuffle-card.pickable{ cursor:pointer; border-color:var(--amber); }
+.shuffle-card.pickable:hover{ transform:translateY(-6px); }
+.shuffle-card.flick{ transform:scale(0.9); opacity:0.55; }
+.mini-rarity{ font-family:'JetBrains Mono',monospace; font-size:9px; margin-top:5px; font-weight:700; }
+.card-back{ font-family:'Fraunces',serif; font-size:36px; color:var(--paper-dim); opacity:0.5; }
+.shuffle-hint{ text-align:center; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--paper-dim); min-height:16px; }
+
+/* 순위표 & 닉네임 입력 */
+.leaderboard{ margin-top:14px; text-align:left; background:var(--ink); border-radius:8px; padding:10px 12px; font-family:'JetBrains Mono',monospace; font-size:12px; width:210px; }
+.lb-title{ font-weight:700; margin-bottom:6px; color:var(--amber); text-align:center; }
+.lb-row{ display:flex; justify-content:space-between; padding:3px 0; color:var(--paper-dim); }
+.lb-row.me{ color:var(--paper); font-weight:800; }
+.nickname-input{
+  font-family:'Nunito',sans-serif; font-size:14px; padding:10px 12px; border-radius:8px;
+  border:1px solid var(--line); background:var(--ink); color:var(--paper); width:180px;
+  text-align:center; margin-bottom:12px;
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div style="margin-bottom:10px;"><a href="index.html" style="font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--paper-dim); text-decoration:none;">← 사이트 홈으로</a></div>
+  <div class="masthead">
+    <div>
+      <h1>이상한 동물도감</h1>
+      <div class="sub">Field Almanac of Curious Creatures</div>
+    </div>
+    <div class="dex-count">도감 <b id="dexProgress">0/20</b></div>
+    <div class="streak-badge">🔥 연속 <b id="streakCount">1</b>일</div>
+    <button id="musicToggle" class="streak-badge" style="cursor:pointer; border:1px solid var(--line);">🔇</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="pull">뽑기</button>
+    <button class="tab-btn" data-tab="dex">도감</button>
+    <button class="tab-btn" data-tab="game">게임</button>
+  </div>
+
+  <div class="view active" id="view-pull">
+    <div class="stage" id="stage">
+      <div class="stage-idle" id="stageIdle">
+        <div class="glyph">?</div>
+        아직 아무도 만나지 못했어요.<br>아래 버튼을 눌러 첫 친구를 찾아보세요.
+      </div>
+    </div>
+
+    <div class="daily-hint" id="dailyHint"></div>
+
+    <div class="action-row">
+      <button class="btn btn-primary" id="freePullBtn">
+        무료로 뽑기
+        <small id="freePullCount">오늘 3회 남음</small>
+      </button>
+      <button class="btn btn-ghost" id="adPullBtn">
+        광고 보고 뽑기
+        <small id="adPullCount">오늘 5회 남음</small>
+      </button>
+    </div>
+
+    <div class="legend">
+      <span><i style="background:var(--moss)"></i>커먼 50%</span>
+      <span><i style="background:var(--slate)"></i>레어 30%</span>
+      <span><i style="background:var(--rose)"></i>에픽 15%</span>
+      <span><i style="background:var(--amber)"></i>레전더리 5%</span>
+    </div>
+  </div>
+
+  <div class="view" id="view-dex">
+    <div class="dex-grid" id="dexGrid"></div>
+  </div>
+
+  <div class="view" id="view-game">
+    <div id="gameCharPicker"></div>
+    <div class="game-area" id="gameArea">
+      <canvas id="gameCanvas"></canvas>
+      <div class="game-player" id="gamePlayer"></div>
+      <div class="game-hud">
+        <span>점수 <b id="gameScore">0</b></span>
+        <span>❤️ <b id="gameLives">3</b></span>
+        <span id="powerupStatus"></span>
+        <span>최고 <b id="gameBest">0</b></span>
+      </div>
+      <div class="combo-badge" id="comboBadge"></div>
+      <div class="game-overlay" id="gameOverlay">
+        <div id="gameOverlayInner"></div>
+      </div>
+    </div>
+    <div class="game-hint">← → 키 또는 드래그로 이동 · 콤보로 배율 UP · 🛡️/🧲 파워업 · 100/200점마다 테마 변경</div>
+  </div>
+
+  <!-- ============================================
+       광고 삽입 자리 (게임 화면 아래)
+       실제 서비스 시 이 div 안을 애드센스 <ins> 태그 코드로 교체하세요.
+       예: <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXX" data-ad-slot="XXXXXXX" data-ad-format="auto"></ins>
+       ============================================ -->
+  <div class="ad-slot" id="adSlotBelowGame">광고 영역 (AdSense 코드 삽입 위치)</div>
+
+  <div class="footnote">
+    프로토타입 안내 · 뽑기 결과와 도감은 이 브라우저에 저장되어 다시 방문해도 유지돼요.
+    "광고 보고 뽑기"는 실제 광고 SDK 연동 전 목업이며, 지금은 2초 대기로 대체되어 있어요.
+    무료/광고 뽑기 횟수는 매일 초기화됩니다. 몬스터 일러스트는 전부 코드로 그린 오리지널 SVG예요.
+  </div>
+
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-inner" id="modalInner"></div>
+</div>
+
+<script>
+const RARITY = {
+  common:   { label:'커먼',     weight:50, particles:6  },
+  rare:     { label:'레어',     weight:30, particles:10 },
+  epic:     { label:'에픽',     weight:15, particles:16 },
+  legendary:{ label:'레전더리', weight:5,  particles:24 },
+};
+
+const MONSTERS = [
+  {id:'m01', name:'안개여우',     rarity:'common',    species:'fox',      a:'#E8A968', b:'#C9803C', ear:'tri',  tail:'bushy',   muzzle:true,               eye:'round',
+    ability:'안개가 짙은 밤에만 모습을 드러내며, 지나간 자리엔 발자국이 남지 않는다.'},
+  {id:'m02', name:'달토끼',       rarity:'common',    species:'rabbit',   a:'#F2E8D0', b:'#DCC79A', ear:'long', tail:'cotton',                             eye:'wide'},
+  {id:'m03', name:'그림자고양이', rarity:'common',    species:'cat',      a:'#8B7FA8', b:'#5F5580', ear:'tri',  tail:'slim',    whiskers:true,             eye:'sleepy',
+    ability:'낮에는 그림자 속에 몸을 숨기고, 눈만 살짝 내놓은 채 관찰한다.'},
+  {id:'m04', name:'도토리다람쥐', rarity:'common',    species:'squirrel', a:'#D69A4E', b:'#A96E28', ear:'round',tail:'arched',                             eye:'round',
+    ability:'도토리를 백 개 넘게 숨겨두지만 절반은 어디 뒀는지 스스로도 잊는다.'},
+  {id:'m05', name:'밤손너구리',   rarity:'common',    species:'raccoon',  a:'#AEA79C', b:'#726B60', ear:'round',tail:'ring',    mask:true,                 eye:'mismatched',
+    ability:'손재주가 좋아 웬만한 매듭이나 잠금장치도 풀어낸다는 소문이 있다.'},
+
+  {id:'m06', name:'야행올빼미',   rarity:'rare',       species:'owl',      a:'#C39456', b:'#8E6530', ear:'tuft', wings:'bird small', beak:true,             eye:'wide',
+    ability:'고개를 270도까지 돌릴 수 있어, 뒤에서 다가가도 소용없다.'},
+  {id:'m07', name:'은빛늑대',     rarity:'rare',       species:'wolf',     a:'#C7CDD8', b:'#98A1B0', ear:'tri',  tail:'bushy',   muzzle:true,               eye:'round',
+    ability:'무리 중 가장 먼저 눈을 뜨고, 가장 마지막까지 주위를 살핀다.'},
+  {id:'m08', name:'물안개수달',   rarity:'rare',       species:'otter',    a:'#A6C2A0', b:'#729068', ear:'round',tail:'flat',    muzzle:true,               eye:'round',
+    ability:'차가운 물속에서도 체온을 잃지 않도록 촘촘한 이중 털을 지녔다.'},
+  {id:'m09', name:'박명박쥐',     rarity:'rare',       species:'bat',      a:'#8A7FB8', b:'#584C86', ear:'tri',  wings:'bat',                               eye:'mismatched'},
+  {id:'m10', name:'눈스라소니',   rarity:'rare',       species:'lynx',     a:'#DCE3EC', b:'#AEB9C8', ear:'tri',  tail:'stub',    ruff:true, earTuftLine:true, eye:'sparkle',
+    ability:'눈밭 위를 걸어도 발자국이 거의 남지 않을 만큼 가볍다.'},
+
+  {id:'m11', name:'심림곰',       rarity:'epic',       species:'bear',     a:'#8D6C4C', b:'#5E4429', ear:'round',tail:'stub',    muzzle:true,               eye:'round',
+    ability:'깊은 숲 안쪽에서만 목격되며, 인기척을 느끼면 바로 자취를 감춘다.'},
+  {id:'m12', name:'서리사슴',     rarity:'epic',       species:'deer',     a:'#B8D0D6', b:'#82A4AC', ear:'long', tail:'stub',    horn:'antler',             eye:'sleepy',
+    ability:'뿔에 서리가 맺혀도 아랑곳하지 않고 새벽 능선을 가로지른다.'},
+  {id:'m13', name:'파도물범',     rarity:'epic',       species:'seal',     a:'#7FA6C2', b:'#4E7796', ear:'round',tail:'flat',                               eye:'wide'},
+  {id:'m14', name:'폭풍매',       rarity:'epic',       species:'hawk',     a:'#6E7FB0', b:'#454E7C', wings:'bird', tail:'feather', beak:true,               eye:'sparkle',
+    ability:'폭풍이 몰아치기 직전, 기압의 변화를 가장 먼저 감지한다.'},
+  {id:'m15', name:'불꽃호랑이',   rarity:'epic',       species:'tiger',    a:'#F08A48', b:'#C15B24', ear:'tri',  stripes:true,   muzzle:true,               eye:'round',
+    ability:'체온이 유난히 높아서, 지나간 자리엔 옅은 아지랑이가 남는다.'},
+
+  {id:'m16', name:'칠흑용',       rarity:'legendary',  species:'dragon',   a:'#5B4E82', b:'#332855', horn:'dragon', wings:'bat', tail:'spike',             eye:'sparkle',
+    ability:'빛이 닿지 않는 깊은 동굴 아래에서 오랜 시간을 웅크린 채 잠들어 있었다.'},
+  {id:'m17', name:'황금불사조',   rarity:'legendary',  species:'phoenix',  a:'#F5C862', b:'#E0813A', wings:'bird large', tail:'feather',                    eye:'sparkle',
+    ability:'깃털 하나가 스스로 타오르며 어둠 속에서도 길을 밝힌다고 전해진다.'},
+  {id:'m18', name:'여명그리폰',   rarity:'legendary',  species:'griffin',  a:'#E0BC6E', b:'#A5813F', ear:'tri', wings:'bird', beak:true, tail:'stub',       eye:'wide'},
+  {id:'m19', name:'별빛유니콘',   rarity:'legendary',  species:'unicorn',  a:'#E8DCF5', b:'#C6ABE0', ear:'tri', horn:'single', tail:'feather',              eye:'sparkle',
+    ability:'뿔 끝에서 떨어지는 빛의 가루가 밤하늘의 별처럼 반짝인다.'},
+  {id:'m20', name:'태초의거북',   rarity:'legendary',  species:'turtle',   a:'#7D9A6C', b:'#54704A',                                                        eye:'round',
+    ability:'등껍질의 무늬가 오래된 지도를 닮았다는 이야기가 전해 내려온다.'},
+];
+
+/* ---------------- 절차적 SVG 크리처 렌더러 ---------------- */
+const INK = '#1a1622';
+
+function mirror(svg){ return svg + `<g transform="translate(140,0) scale(-1,1)">${svg}</g>`; }
+
+const EARS = {
+  tri: (a,b)=>`<path d="M40,78 L52,30 L66,74 Z" fill="${a}" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><path d="M46,70 L52,44 L60,70 Z" fill="${b}" opacity="0.55"/>`,
+  round: (a,b)=>`<circle cx="44" cy="60" r="15" fill="${a}" stroke="${INK}" stroke-width="5"/><circle cx="44" cy="60" r="7" fill="${b}" opacity="0.5"/>`,
+  long: (a,b)=>`<ellipse cx="48" cy="56" rx="11" ry="42" fill="${a}" stroke="${INK}" stroke-width="5" transform="rotate(-10 48 56)"/><ellipse cx="48" cy="58" rx="5" ry="32" fill="${b}" opacity="0.5" transform="rotate(-10 48 58)"/>`,
+  tuft: (a,b)=>`<path d="M46,74 L52,56 L60,74 Z" fill="${a}" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>`,
+};
+
+const HORN = {
+  single: (b)=>`<path d="M64,62 L70,14 L76,62 Z" fill="${b}" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><line x1="67" y1="52" x2="73" y2="46" stroke="${INK}" stroke-width="2.5" opacity="0.6"/><line x1="66" y1="40" x2="74" y2="34" stroke="${INK}" stroke-width="2.5" opacity="0.6"/>`,
+  dragon: (b)=>`<path d="M46,68 C40,44 46,22 60,16 C52,32 52,52 56,70 Z" fill="${b}" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>`,
+  antler: (b)=>`<path d="M52,70 C48,42 42,22 30,12" fill="none" stroke="${INK}" stroke-width="9" stroke-linecap="round"/><path d="M52,70 C48,42 42,22 30,12" fill="none" stroke="${b}" stroke-width="5" stroke-linecap="round"/><path d="M44,46 L28,34" fill="none" stroke="${INK}" stroke-width="8" stroke-linecap="round"/><path d="M44,46 L28,34" fill="none" stroke="${b}" stroke-width="4" stroke-linecap="round"/>`,
+};
+
+const TAIL = {
+  bushy:   (a,b)=>`<ellipse cx="106" cy="136" rx="22" ry="26" fill="${a}" stroke="${INK}" stroke-width="5"/><ellipse cx="110" cy="124" rx="9" ry="11" fill="${b}" opacity="0.6"/>`,
+  cotton:  (a)=>`<circle cx="98" cy="158" r="13" fill="${a}" stroke="${INK}" stroke-width="5"/>`,
+  slim:    (a)=>`<path d="M92,136 C110,132 118,150 106,164 C100,154 94,146 92,136 Z" fill="${a}" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>`,
+  arched:  (a)=>`<path d="M88,116 C118,96 128,126 112,144 C102,126 92,122 88,116 Z" fill="${a}" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>`,
+  ring:    (a)=>`<rect x="94" y="114" width="18" height="50" rx="9" fill="${a}" stroke="${INK}" stroke-width="5" transform="rotate(18 103 139)"/><g transform="rotate(18 103 139)" opacity="0.55"><rect x="94" y="120" width="18" height="9" fill="${INK}"/><rect x="94" y="138" width="18" height="9" fill="${INK}"/><rect x="94" y="156" width="18" height="9" fill="${INK}"/></g>`,
+  flat:    (a)=>`<ellipse cx="104" cy="146" rx="26" ry="12" fill="${a}" stroke="${INK}" stroke-width="5" transform="rotate(-8 104 146)"/>`,
+  feather: (a)=>`<path d="M92,136 C112,130 118,156 100,168 C96,154 92,144 92,136 Z" fill="${a}" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>`,
+  stub:    (a)=>`<circle cx="98" cy="156" r="9" fill="${a}" stroke="${INK}" stroke-width="5"/>`,
+  spike:   (a)=>`<path d="M90,136 L114,144 L92,162 Z" fill="${a}" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>`,
+};
+
+function wingSVG(spec, color){
+  const parts = spec.split(' ');
+  const shape = parts[0];
+  const size = parts[1] || 'normal';
+  const scale = size === 'small' ? 0.6 : size === 'large' ? 1.3 : 1;
+  const ty = size === 'large' ? 96 : 110;
+  const tx = size === 'large' ? 26 : 36;
+  const path = shape === 'bat'
+    ? 'M0,0 C-28,-18 -52,-8 -74,-18 C-56,10 -40,32 -14,34 C-8,18 -2,8 0,0 Z'
+    : 'M0,0 C-26,-14 -48,-4 -68,-10 C-52,14 -34,30 -8,30 C-4,16 0,8 0,0 Z';
+  const single = `<g transform="translate(${tx},${ty}) scale(${scale})"><path d="${path}" fill="${color}" stroke="${INK}" stroke-width="5" stroke-linejoin="round" opacity="0.94"/></g>`;
+  return mirror(single);
+}
+
+function MUZZLE(b){ return `<ellipse cx="70" cy="112" rx="20" ry="15" fill="${b}" stroke="${INK}" stroke-width="4"/><circle cx="70" cy="104" r="3.5" fill="${INK}"/>`; }
+function MASK(){ return `<ellipse cx="50" cy="92" rx="15" ry="17" fill="${INK}" opacity="0.55"/>`; }
+function BLUSH(){ return `<ellipse cx="46" cy="112" rx="10" ry="6" fill="#f0a4b4" opacity="0.55"/><ellipse cx="94" cy="112" rx="10" ry="6" fill="#f0a4b4" opacity="0.55"/>`; }
+function RUFF(a){ return `<path d="M40,116 L28,110 L38,130 L48,120 Z" fill="${a}" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/>`; }
+function WHISKERS(){ return `<line x1="46" y1="112" x2="14" y2="106" stroke="${INK}" stroke-width="2.5" stroke-linecap="round"/><line x1="46" y1="118" x2="12" y2="118" stroke="${INK}" stroke-width="2.5" stroke-linecap="round"/><line x1="46" y1="124" x2="14" y2="130" stroke="${INK}" stroke-width="2.5" stroke-linecap="round"/>`; }
+function BEAK(){ return `<path d="M62,104 L70,124 L78,104 Z" fill="#f0a93c" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/>`; }
+function MOUTH(){ return `<path d="M59,123 Q70,136 81,123" fill="none" stroke="${INK}" stroke-width="4.5" stroke-linecap="round"/>`; }
+
+let STRIPE_UID = 0;
+function STRIPES(){
+  STRIPE_UID++;
+  const id = `stripeclip${STRIPE_UID}`;
+  return `<clipPath id="${id}"><circle cx="70" cy="94" r="37"/></clipPath>
+    <g clip-path="url(#${id})" opacity="0.32">
+      <path d="M20,60 L60,140" stroke="${INK}" stroke-width="7"/>
+      <path d="M40,50 L85,150" stroke="${INK}" stroke-width="7"/>
+      <path d="M65,45 L110,145" stroke="${INK}" stroke-width="7"/>
+      <path d="M90,55 L125,120" stroke="${INK}" stroke-width="7"/>
+    </g>`;
+}
+
+const EYES = {
+  round: ()=>`<ellipse cx="50" cy="92" rx="11" ry="13" fill="#fff" stroke="${INK}" stroke-width="4"/><circle cx="51" cy="95" r="6" fill="${INK}"/><circle cx="48" cy="91" r="2.3" fill="#fff"/><ellipse cx="90" cy="92" rx="11" ry="13" fill="#fff" stroke="${INK}" stroke-width="4"/><circle cx="89" cy="95" r="6" fill="${INK}"/><circle cx="92" cy="91" r="2.3" fill="#fff"/>`,
+  wide: ()=>`<ellipse cx="48" cy="90" rx="14" ry="16" fill="#fff" stroke="${INK}" stroke-width="4"/><circle cx="49" cy="94" r="7.5" fill="${INK}"/><circle cx="45" cy="87" r="3" fill="#fff"/><ellipse cx="92" cy="90" rx="14" ry="16" fill="#fff" stroke="${INK}" stroke-width="4"/><circle cx="91" cy="94" r="7.5" fill="${INK}"/><circle cx="95" cy="87" r="3" fill="#fff"/>`,
+  sleepy: ()=>`<path d="M39,94 Q50,84 61,94" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path d="M79,94 Q90,84 101,94" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>`,
+  sparkle: ()=>`<ellipse cx="50" cy="92" rx="12" ry="14" fill="#fff" stroke="${INK}" stroke-width="4"/><circle cx="51" cy="95" r="7" fill="${INK}"/><path d="M48,89 l1.3,3.2 l3.2,1.3 l-3.2,1.3 l-1.3,3.2 l-1.3,-3.2 l-3.2,-1.3 l3.2,-1.3 Z" fill="#fff"/><ellipse cx="90" cy="92" rx="12" ry="14" fill="#fff" stroke="${INK}" stroke-width="4"/><circle cx="89" cy="95" r="7" fill="${INK}"/><path d="M92,89 l1.3,3.2 l3.2,1.3 l-3.2,1.3 l-1.3,3.2 l-1.3,-3.2 l-3.2,-1.3 l3.2,-1.3 Z" fill="#fff"/>`,
+  mismatched: ()=>`<ellipse cx="48" cy="90" rx="14" ry="16" fill="#fff" stroke="${INK}" stroke-width="4"/><circle cx="49" cy="94" r="7.5" fill="${INK}"/><circle cx="45" cy="87" r="3" fill="#fff"/><ellipse cx="92" cy="96" rx="8" ry="9" fill="#fff" stroke="${INK}" stroke-width="4"/><circle cx="93" cy="98" r="4" fill="${INK}"/><circle cx="91" cy="94" r="1.6" fill="#fff"/>`,
+};
+
+function wrapSvg(inner, viewBox){
+  return `<svg viewBox="${viewBox || '0 0 140 172'}" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">${inner}</svg>`;
+}
+
+function buildTurtleInner(m){
+  const a = m.a, b = m.b;
+  return `
+    <ellipse cx="70" cy="150" rx="16" ry="14" fill="${a}" stroke="${INK}" stroke-width="5"/>
+    <ellipse cx="30" cy="150" rx="13" ry="11" fill="${a}" stroke="${INK}" stroke-width="5"/>
+    <ellipse cx="110" cy="150" rx="13" ry="11" fill="${a}" stroke="${INK}" stroke-width="5"/>
+    <path d="M38,148 C38,96 102,96 102,148 C102,178 38,178 38,148 Z" fill="${a}" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>
+    <g opacity="0.3">
+      <circle cx="56" cy="122" r="9" fill="${b}"/>
+      <circle cx="84" cy="122" r="9" fill="${b}"/>
+      <circle cx="70" cy="142" r="10" fill="${b}"/>
+      <circle cx="50" cy="156" r="7" fill="${b}"/>
+      <circle cx="90" cy="156" r="7" fill="${b}"/>
+    </g>
+    <circle cx="70" cy="180" r="26" fill="${a}" stroke="${INK}" stroke-width="5"/>
+    <ellipse cx="56" cy="196" rx="9" ry="5.5" fill="#f0a4b4" opacity="0.55"/>
+    <ellipse cx="84" cy="196" rx="9" ry="5.5" fill="#f0a4b4" opacity="0.55"/>
+    <ellipse cx="60" cy="177" rx="9" ry="11" fill="#fff" stroke="${INK}" stroke-width="4"/>
+    <circle cx="61" cy="180" r="5" fill="${INK}"/><circle cx="58" cy="176" r="2" fill="#fff"/>
+    <ellipse cx="80" cy="177" rx="9" ry="11" fill="#fff" stroke="${INK}" stroke-width="4"/>
+    <circle cx="81" cy="180" r="5" fill="${INK}"/><circle cx="78" cy="176" r="2" fill="#fff"/>
+    <path d="M62,196 Q70,201 78,196" fill="none" stroke="${INK}" stroke-width="3.5" stroke-linecap="round"/>
+  `;
+}
+
+function buildCreatureHTML(m){
+  if(m.species === 'turtle') return wrapSvg(buildTurtleInner(m), '0 0 140 220');
+
+  const a = m.a, b = m.b;
+  let inner = '';
+  if(m.tail) inner += TAIL[m.tail](a, b);
+  if(m.wings) inner += wingSVG(m.wings, b);
+  inner += `<ellipse cx="70" cy="142" rx="34" ry="18" fill="${a}" stroke="${INK}" stroke-width="5"/>`;
+  if(m.ear) inner += mirror(EARS[m.ear](a, b));
+  inner += `<circle cx="70" cy="94" r="37" fill="${a}" stroke="${INK}" stroke-width="5"/>`;
+  if(m.horn === 'single') inner += HORN.single(b);
+  if(m.horn === 'dragon') inner += mirror(HORN.dragon(b));
+  if(m.horn === 'antler') inner += mirror(HORN.antler(b));
+  if(m.earTuftLine) inner += mirror(`<line x1="52" y1="30" x2="55" y2="14" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>`);
+  if(m.muzzle) inner += MUZZLE(b);
+  if(m.mask) inner += mirror(MASK());
+  if(m.stripes) inner += STRIPES();
+  inner += BLUSH();
+  if(m.ruff) inner += mirror(RUFF(a));
+  if(m.beak) inner += BEAK();
+  if(m.whiskers) inner += mirror(WHISKERS());
+  inner += (EYES[m.eye] || EYES.round)();
+  inner += MOUTH();
+  return wrapSvg(inner);
+}
+
+/* ---------------- 사운드 (Web Audio API로 즉석 합성, 외부 파일 없음) ---------------- */
+let audioCtx = null;
+let musicOn = false;
+let musicTimer = null;
+let musicStep = 0;
+
+function ensureAudio(){
+  if(!audioCtx){
+    try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch(e){ /* 지원 안 함 */ }
+  }
+  if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function beep(freq, dur, type, vol, delay){
+  if(!audioCtx) return;
+  const t0 = audioCtx.currentTime + (delay || 0);
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type || 'square';
+  osc.frequency.setValueAtTime(freq, t0);
+  gain.gain.setValueAtTime(0, t0);
+  gain.gain.linearRampToValueAtTime(vol || 0.16, t0 + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.001, t0 + (dur || 0.12));
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(t0);
+  osc.stop(t0 + (dur || 0.12) + 0.03);
+}
+
+function playSeq(notes, type, vol, gap){
+  notes.forEach((f, i) => beep(f, (gap || 0.09) * 0.9, type, vol, i * (gap || 0.09)));
+}
+
+const NOTE = { C4:261.6, D4:293.7, E4:329.6, F4:349.2, G4:392.0, A4:440.0, B4:493.9,
+  C5:523.3, D5:587.3, E5:659.3, F5:698.5, G5:784.0, A5:880.0, C6:1046.5 };
+
+function sfxClick(){ ensureAudio(); beep(500, 0.06, 'square', 0.1); }
+function sfxFlip(){ ensureAudio(); beep(700 + Math.random()*200, 0.035, 'square', 0.06); }
+function sfxCatch(type){
+  ensureAudio();
+  if(type === 'gem' || type === 'rare') playSeq([NOTE.E5, NOTE.G5], 'square', 0.13, 0.05);
+  else if(type === 'diamond') playSeq([NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6], 'square', 0.15, 0.045);
+  else if(type === 'heart') playSeq([NOTE.C5, NOTE.E5], 'sine', 0.15, 0.08);
+  else if(type === 'shield') playSeq([NOTE.G4, NOTE.C5, NOTE.E5], 'square', 0.16, 0.06);
+  else if(type === 'shieldBlock') playSeq([NOTE.G5, NOTE.C5], 'square', 0.13, 0.05);
+  else if(type === 'magnet') playSeq([NOTE.A4, NOTE.C5, NOTE.E5], 'triangle', 0.15, 0.05);
+  else beep(NOTE.C5, 0.06, 'square', 0.11);
+}
+function sfxHit(){
+  ensureAudio();
+  [190, 150, 110].forEach((f, i) => beep(f, 0.09, 'sawtooth', 0.18, i * 0.05));
+}
+function sfxReveal(rarity){
+  ensureAudio();
+  if(rarity === 'common') playSeq([NOTE.C5, NOTE.E5], 'square', 0.15, 0.09);
+  else if(rarity === 'rare') playSeq([NOTE.C5, NOTE.E5, NOTE.G5], 'square', 0.16, 0.09);
+  else if(rarity === 'epic') playSeq([NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6], 'square', 0.17, 0.08);
+  else playSeq([NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6, NOTE.G5, NOTE.C6], 'square', 0.19, 0.07);
+}
+function sfxGameStart(){ ensureAudio(); playSeq([NOTE.C4, NOTE.E4, NOTE.G4, NOTE.C5], 'triangle', 0.14, 0.08); }
+function sfxGameOver(){ ensureAudio(); playSeq([NOTE.G4, NOTE.E4, NOTE.C4], 'sawtooth', 0.15, 0.14); }
+function sfxToast(){ ensureAudio(); playSeq([NOTE.E5, NOTE.C6], 'square', 0.12, 0.06); }
+
+const MUSIC_LOOP = [NOTE.C4,NOTE.E4,NOTE.G4,NOTE.C5,NOTE.G4,NOTE.E4,NOTE.A4,NOTE.C5,NOTE.E5,NOTE.C5,NOTE.A4,NOTE.E4,NOTE.F4,NOTE.A4,NOTE.C5,NOTE.G4];
+function musicTick(){
+  if(!musicOn) return;
+  beep(MUSIC_LOOP[musicStep % MUSIC_LOOP.length], 0.16, 'triangle', 0.045);
+  musicStep++;
+  musicTimer = setTimeout(musicTick, 230);
+}
+function toggleMusic(){
+  ensureAudio();
+  musicOn = !musicOn;
+  const btn = document.getElementById('musicToggle');
+  if(btn) btn.textContent = musicOn ? '🔊' : '🔇';
+  if(musicOn) musicTick();
+  else clearTimeout(musicTimer);
+}
+
+/* ---------------- 게임 상태 & 로직 ---------------- */
+const APP_VERSION = 'v10';
+let state = { date:'', freePulls:3, adPulls:5, dex:{}, streak:1, firstPullDone:false, claimedMilestones:[], version:APP_VERSION };
+
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function isYesterday(prevDate, today){
+  const p = new Date(prevDate + 'T00:00:00');
+  const t = new Date(today + 'T00:00:00');
+  return (t - p) === 86400000;
+}
+
+let pendingToast = null;
+
+async function loadState(){
+  try{
+    const res = await window.storage.get('player-state');
+    if(res && res.value) state = JSON.parse(res.value);
+  }catch(e){ /* 최초 방문 */ }
+  if(state.version !== APP_VERSION){
+    state = { date:'', freePulls:3, adPulls:5, dex:{}, streak:1, firstPullDone:false, claimedMilestones:[], version:APP_VERSION };
+  }
+  if(!state.claimedMilestones) state.claimedMilestones = [];
+  const today = todayStr();
+  if(state.date !== today){
+    const prevDate = state.date;
+    state.streak = (prevDate && isYesterday(prevDate, today)) ? (state.streak || 1) + 1 : 1;
+    state.date = today;
+    state.freePulls = 3;
+    state.adPulls = 5;
+    state.firstPullDone = false;
+    if(state.streak > 1 && state.streak % 3 === 0){
+      state.freePulls += 1;
+      pendingToast = `🔥 연속 ${state.streak}일 방문 보너스! 무료 뽑기 +1`;
+    }
+    await saveState();
+  }
+  render();
+  if(pendingToast){ showToast(pendingToast); pendingToast = null; }
+}
+
+async function saveState(){
+  try{ await window.storage.set('player-state', JSON.stringify(state)); }
+  catch(e){ console.error('save failed', e); }
+}
+
+function pickRarity(minTier){
+  const order = ['common','rare','epic','legendary'];
+  const pool = minTier ? order.slice(order.indexOf(minTier)) : order;
+  const total = pool.reduce((s,k)=>s+RARITY[k].weight,0);
+  let roll = Math.random()*total, acc = 0;
+  for(const k of pool){ acc += RARITY[k].weight; if(roll <= acc) return k; }
+  return pool[pool.length-1];
+}
+
+function pickMonster(minTier){
+  const pool = MONSTERS.filter(m => m.rarity === pickRarity(minTier));
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function statFor(m){
+  const base = {common:38, rare:55, epic:70, legendary:85}[m.rarity];
+  const idNum = parseInt(m.id.slice(1));
+  return base + (idNum % 5) * 3;
+}
+
+function rarityHex(rarity){
+  const varNames = {common:'--moss', rare:'--slate', epic:'--rose', legendary:'--amber'};
+  const val = getComputedStyle(document.documentElement).getPropertyValue(varNames[rarity]).trim();
+  return val || '#f5b93d';
+}
+
+function buildSpecimenCard(m, opts = {}){
+  const idx = MONSTERS.indexOf(m) + 1;
+  const stat = statFor(m);
+  const owned = opts.owned || 0;
+  return `
+    <div class="spec-card rarity-${m.rarity}" style="--rc:${rarityHex(m.rarity)};">
+      <div class="spec-top">
+        <span class="spec-pill">야생 개체</span>
+        <span class="spec-stat">경계심 <b>${stat}</b></span>
+      </div>
+      <div class="spec-illust"><div class="creature-wrap">${buildCreatureHTML(m)}</div></div>
+      <div class="spec-name-row">
+        <span class="spec-name">${m.name}</span>
+        <span class="spec-rarity-label">${RARITY[m.rarity].label}</span>
+      </div>
+      <div class="spec-ability">
+        <div class="lbl">생태</div>
+        <div class="txt">${m.ability || '관찰 기록이 아직 충분하지 않다.'}</div>
+      </div>
+      <div class="spec-foot">
+        <span>No. ${String(idx).padStart(2,'0')} · 이상한 동물도감</span>
+        ${opts.isNew ? `<span class="spec-tag">NEW</span>` : owned ? `<span>보유 x${owned}</span>` : ''}
+      </div>
+      ${opts.firstBonus ? `<div style="text-align:center; margin-top:6px; font-family:'JetBrains Mono',monospace; font-size:9.5px; color:var(--rc); position:relative; z-index:2;">오늘의 첫 뽑기 · 레어 이상 확정</div>` : ''}
+      <div class="sweep"></div>
+    </div>
+  `;
+}
+
+function buildLockedSpecCard(m){
+  const idx = MONSTERS.indexOf(m) + 1;
+  return `
+    <div class="spec-card rarity-${m.rarity}" style="--rc:${rarityHex(m.rarity)}; opacity:0.88;">
+      <div class="spec-top">
+        <span class="spec-pill">미확인 개체</span>
+        <span class="spec-stat">경계심 <b>??</b></span>
+      </div>
+      <div class="spec-illust" style="filter:brightness(0) opacity(0.85);"><div class="creature-wrap">${buildCreatureHTML(m)}</div></div>
+      <div class="spec-name-row">
+        <span class="spec-name">???</span>
+        <span class="spec-rarity-label">${RARITY[m.rarity].label}</span>
+      </div>
+      <div class="spec-ability">
+        <div class="lbl">생태</div>
+        <div class="txt">아직 관찰 기록이 없어요. 뽑기에서 만나보세요.</div>
+      </div>
+      <div class="spec-foot">
+        <span>No. ${String(idx).padStart(2,'0')} · 이상한 동물도감</span>
+      </div>
+    </div>
+  `;
+}
+
+function openModal(m, owned){
+  const overlay = document.getElementById('modalOverlay');
+  const inner = document.getElementById('modalInner');
+  inner.innerHTML = `<button class="modal-close" id="modalCloseBtn">✕</button>` +
+    (owned ? buildSpecimenCard(m, {owned}) : buildLockedSpecCard(m));
+  overlay.classList.add('open');
+  document.getElementById('modalCloseBtn').addEventListener('click', closeModal);
+}
+function closeModal(){ document.getElementById('modalOverlay').classList.remove('open'); }
+
+function spawnBurst(container, color, count){
+  const burst = document.createElement('div');
+  burst.className = 'burst';
+  for(let i=0;i<count;i++){
+    const p = document.createElement('span');
+    const angle = (Math.PI * 2 * i) / count + Math.random()*0.3;
+    const dist = 70 + Math.random()*60;
+    p.style.setProperty('--tx', `${Math.cos(angle)*dist}px`);
+    p.style.setProperty('--ty', `${Math.sin(angle)*dist}px`);
+    p.style.background = color;
+    p.style.animationDelay = (Math.random()*0.08) + 's';
+    burst.appendChild(p);
+  }
+  container.appendChild(burst);
+  setTimeout(()=>burst.remove(), 950);
+}
+
+function showToast(text){
+  sfxToast();
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = text;
+  document.body.appendChild(t);
+  requestAnimationFrame(() => t.classList.add('show'));
+  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 2800);
+}
+
+const MILESTONES = [
+  {count:5,  freePulls:1, label:'🎉 5종 수집 달성! 무료 뽑기 +1'},
+  {count:10, adPulls:2,   label:'🎉 10종 수집 달성! 광고 뽑기 +2'},
+  {count:15, freePulls:2, label:'🎉 15종 수집 달성! 무료 뽑기 +2'},
+  {count:20, freePulls:3, adPulls:3, label:'🏆 전체 도감 완성! 보너스 뽑기 +3 / +3'},
+];
+
+function checkMilestones(){
+  const owned = Object.keys(state.dex).length;
+  let msg = null;
+  MILESTONES.forEach(ms => {
+    if(owned >= ms.count && !state.claimedMilestones.includes(ms.count)){
+      state.claimedMilestones.push(ms.count);
+      if(ms.freePulls) state.freePulls += ms.freePulls;
+      if(ms.adPulls) state.adPulls += ms.adPulls;
+      msg = ms.label;
+    }
+  });
+  return msg;
+}
+
+function updateButtons(){
+  document.getElementById('freePullCount').textContent = `오늘 ${state.freePulls}회 남음`;
+  document.getElementById('adPullCount').textContent = `오늘 ${state.adPulls}회 남음`;
+  const freeBtn = document.getElementById('freePullBtn');
+  freeBtn.disabled = state.freePulls <= 0;
+  document.getElementById('adPullBtn').disabled = state.adPulls <= 0;
+  freeBtn.classList.toggle('guarantee', !state.firstPullDone && state.freePulls > 0);
+  document.getElementById('dailyHint').textContent = !state.firstPullDone
+    ? '✨ 오늘의 첫 뽑기는 레어 이상 확정!'
+    : '';
+}
+
+function updateDexProgress(){
+  document.getElementById('dexProgress').textContent = `${Object.keys(state.dex).length}/${MONSTERS.length}`;
+}
+
+async function finalizePull(m, extra = {}){
+  const isNew = !state.dex[m.id];
+  state.dex[m.id] = (state.dex[m.id] || 0) + 1;
+  state.firstPullDone = true;
+  const milestoneMsg = checkMilestones();
+  await saveState();
+  updateDexProgress();
+  updateButtons();
+  renderDex();
+
+  const stage = document.getElementById('stage');
+  stage.innerHTML = '';
+  spawnBurst(stage, rarityHex(m.rarity), RARITY[m.rarity].particles);
+
+  const cardWrap = document.createElement('div');
+  cardWrap.className = 'pop';
+  cardWrap.innerHTML = buildSpecimenCard(m, { isNew, owned: state.dex[m.id], firstBonus: extra.firstBonus });
+  stage.appendChild(cardWrap);
+
+  if(milestoneMsg) showToast(milestoneMsg);
+}
+
+function runPullSequence(guarantee, triggerBtn, originalHandler){
+  const candidates = [pickMonster(guarantee), pickMonster(guarantee), pickMonster(guarantee)];
+  const stage = document.getElementById('stage');
+  const CARD_W = 96, GAP = 14;
+  stage.innerHTML = `
+    <div id="shuffleRow" style="position:relative; width:${CARD_W*3+GAP*2}px; height:122px; margin:0 auto 16px;"></div>
+    <div class="shuffle-hint" id="shuffleHint">3장을 잘 기억해두세요...</div>`;
+  const row = document.getElementById('shuffleRow');
+
+  const slotOf = [0, 1, 2]; // slotOf[candidateIndex] = 현재 슬롯 위치
+  const xForSlot = (slot) => slot * (CARD_W + GAP);
+
+  candidates.forEach((c, ci) => {
+    const el = document.createElement('div');
+    el.className = 'shuffle-card';
+    el.dataset.ci = ci;
+    el.style.position = 'absolute';
+    el.style.top = '0';
+    el.style.left = xForSlot(slotOf[ci]) + 'px';
+    el.style.transition = 'left 0.42s cubic-bezier(.4,.05,.2,1)';
+    el.innerHTML = `<div class="creature-wrap" style="width:56px;height:60px;">${buildCreatureHTML(c)}</div><div class="mini-rarity" style="color:${rarityHex(c.rarity)}">${RARITY[c.rarity].label}</div>`;
+    row.appendChild(el);
+  });
+
+  let finished = false;
+  let pendingTimeout = null;
+  let btnOriginalHTML = null;
+
+  function restoreButton(){
+    if(triggerBtn){
+      triggerBtn.classList.remove('btn-ghost');
+      if(btnOriginalHTML !== null) triggerBtn.innerHTML = btnOriginalHTML;
+      triggerBtn.onclick = originalHandler || null;
+      updateButtons();
+    }
+  }
+
+  function enablePicking(){
+    row.querySelectorAll('.shuffle-card').forEach(el => {
+      el.innerHTML = `<div class="card-back">?</div>`;
+      el.style.transition = 'left 0.42s cubic-bezier(.4,.05,.2,1)';
+      el.classList.add('pickable');
+      el.addEventListener('click', () => {
+        row.querySelectorAll('.shuffle-card').forEach(x => x.classList.remove('pickable'));
+        document.getElementById('shuffleHint').textContent = '';
+        const chosen = candidates[parseInt(el.dataset.ci)];
+        sfxReveal(chosen.rarity);
+        finalizePull(chosen, { firstBonus: !!guarantee });
+      }, { once:true });
+    });
+  }
+
+  function finishNow(){
+    if(finished) return;
+    finished = true;
+    if(pendingTimeout) clearTimeout(pendingTimeout);
+
+    // 스킵 시점과 무관하게 항상 슬롯을 다시 랜덤 배정
+    const perm = [0, 1, 2];
+    for(let i = perm.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [perm[i], perm[j]] = [perm[j], perm[i]];
+    }
+    row.querySelectorAll('.shuffle-card').forEach(el => {
+      const ci = parseInt(el.dataset.ci);
+      slotOf[ci] = perm[ci];
+      el.style.transition = 'left 0.3s cubic-bezier(.4,.05,.2,1)';
+      el.style.left = xForSlot(perm[ci]) + 'px';
+      el.innerHTML = `<div class="card-back">?</div>`;
+    });
+
+    setTimeout(() => {
+      document.getElementById('shuffleHint').textContent = '하나를 골라보세요!';
+      enablePicking();
+    }, 320);
+    restoreButton();
+  }
+
+  if(triggerBtn){
+    btnOriginalHTML = triggerBtn.innerHTML;
+    triggerBtn.disabled = false;
+    triggerBtn.classList.add('btn-ghost');
+    triggerBtn.innerHTML = '⏩ 빨리 감기';
+    triggerBtn.onclick = finishNow;
+  }
+
+  pendingTimeout = setTimeout(() => {
+    if(finished) return;
+    row.querySelectorAll('.shuffle-card').forEach(el => { el.innerHTML = `<div class="card-back">?</div>`; });
+    document.getElementById('shuffleHint').textContent = '섞는 중...';
+
+    let swaps = 0;
+    const maxSwaps = 11;
+    const doSwap = () => {
+      if(finished) return;
+      const progress = swaps / (maxSwaps - 1);
+      const interval = 520 - progress * 440;   // 520ms → 80ms
+      const transDur = 0.4 - progress * 0.32;  // 0.4s → 0.08s
+
+      const i = Math.floor(Math.random() * 3);
+      let j = Math.floor(Math.random() * 3);
+      while(j === i) j = Math.floor(Math.random() * 3);
+      const ciAtI = slotOf.indexOf(i);
+      const ciAtJ = slotOf.indexOf(j);
+      slotOf[ciAtI] = j;
+      slotOf[ciAtJ] = i;
+      const elI = row.querySelector(`.shuffle-card[data-ci="${ciAtI}"]`);
+      const elJ = row.querySelector(`.shuffle-card[data-ci="${ciAtJ}"]`);
+      elI.style.transition = `left ${transDur}s cubic-bezier(.4,.05,.2,1)`;
+      elJ.style.transition = `left ${transDur}s cubic-bezier(.4,.05,.2,1)`;
+      elI.style.left = xForSlot(j) + 'px';
+      elJ.style.left = xForSlot(i) + 'px';
+      sfxFlip();
+      swaps++;
+      if(swaps < maxSwaps){
+        pendingTimeout = setTimeout(doSwap, interval);
+      } else {
+        pendingTimeout = setTimeout(finishNow, 300);
+      }
+    };
+    doSwap();
+  }, 1200);
+}
+
+async function handleFreePull(){
+  if(state.freePulls <= 0) return;
+  sfxClick();
+  state.freePulls -= 1;
+  await saveState();
+  updateButtons();
+  runPullSequence(!state.firstPullDone ? 'rare' : null, document.getElementById('freePullBtn'), handleFreePull);
+}
+
+async function handleAdPull(){
+  if(state.adPulls <= 0) return;
+  sfxClick();
+  document.getElementById('adPullBtn').disabled = true;
+  const stage = document.getElementById('stage');
+  stage.innerHTML = `<div class="stage-idle"><div class="glyph">▶</div>광고를 보는 중이에요...</div>`;
+  await new Promise(r => setTimeout(r, 2000));
+  state.adPulls -= 1;
+  await saveState();
+  updateButtons();
+  runPullSequence(!state.firstPullDone ? 'rare' : null, document.getElementById('adPullBtn'), handleAdPull);
+}
+
+function renderDex(){
+  const grid = document.getElementById('dexGrid');
+  grid.innerHTML = '';
+  ['common', 'rare', 'epic', 'legendary'].forEach(tier => {
+    const tierMonsters = MONSTERS.filter(m => m.rarity === tier);
+    const ownedCount = tierMonsters.filter(m => state.dex[m.id]).length;
+
+    const section = document.createElement('div');
+    section.className = 'dex-section';
+    section.innerHTML = `<div class="dex-section-title" style="color:${rarityHex(tier)}">${RARITY[tier].label} <span style="color:var(--paper-dim); font-weight:600;">· ${ownedCount}/${tierMonsters.length}</span></div>`;
+
+    const sectionGrid = document.createElement('div');
+    sectionGrid.className = 'dex-grid-inner';
+    tierMonsters.forEach(m => {
+      const owned = state.dex[m.id] || 0;
+      const card = document.createElement('div');
+      card.className = 'dex-card' + (owned ? '' : ' locked');
+      card.style.setProperty('--rc', rarityHex(m.rarity));
+      card.innerHTML = `
+        <div class="dex-badge" style="background:${rarityHex(m.rarity)}"></div>
+        <div class="dex-thumb">${buildCreatureHTML(m)}</div>
+        <div class="dex-name">${owned ? m.name : '???'}</div>
+        <div class="dex-owned">${owned ? `보유 x${owned}` : '미발견'}</div>
+      `;
+      card.addEventListener('click', () => openModal(m, owned));
+      sectionGrid.appendChild(card);
+    });
+    section.appendChild(sectionGrid);
+    grid.appendChild(section);
+  });
+}
+
+function render(){
+  updateButtons();
+  updateDexProgress();
+  document.getElementById('streakCount').textContent = state.streak || 1;
+  renderDex();
+}
+
+/* ---------------- 미니게임: 도토리 캐치 ---------------- */
+let gameState = { running:false, score:0, lives:1, maxLives:3, best:0, playerX:0, items:[], spawnTimer:0, elapsed:0, scoreTickAcc:0, frenzy:false, perk:null, selectedMonsterId:null, rafId:null, shieldUntil:0, magnetUntil:0, trailParticles:[], trailSpawnAcc:0, charColors:null };
+let keys = { left:false, right:false };
+let lastTs = null;
+
+async function loadBest(){
+  try{
+    const r = await window.storage.get('game-best');
+    if(r && r.value) gameState.best = parseInt(r.value) || 0;
+  }catch(e){ /* 기록 없음 */ }
+}
+async function saveBest(){
+  try{ await window.storage.set('game-best', String(gameState.best)); }
+  catch(e){ console.error('best save failed', e); }
+}
+
+function ownedMonsters(){ return MONSTERS.filter(m => state.dex[m.id]); }
+
+function renderCharPicker(){
+  const wrap = document.getElementById('gameCharPicker');
+  const owned = ownedMonsters();
+  const area = document.getElementById('gameArea');
+  const hint = document.querySelector('.game-hint');
+  if(owned.length === 0){
+    wrap.innerHTML = `<div style="color:var(--paper-dim); font-size:13px; padding:20px 0;">아직 뽑은 몬스터가 없어요. 먼저 '뽑기' 탭에서 친구를 만나보세요!</div>`;
+    area.style.display = 'none';
+    hint.style.display = 'none';
+    return;
+  }
+  area.style.display = '';
+  hint.style.display = '';
+  if(!gameState.selectedMonsterId || !owned.find(m => m.id === gameState.selectedMonsterId)){
+    gameState.selectedMonsterId = owned[owned.length - 1].id;
+  }
+  wrap.innerHTML = `<div class="char-picker">${owned.map(m => `
+    <div class="char-pick-item ${m.id === gameState.selectedMonsterId ? 'selected' : ''}" data-id="${m.id}">
+      <div class="creature-wrap">${buildCreatureHTML(m)}</div>
+    </div>`).join('')}</div>`;
+  wrap.querySelectorAll('.char-pick-item').forEach(el => {
+    el.addEventListener('click', () => {
+      if(gameState.running) return;
+      gameState.selectedMonsterId = el.dataset.id;
+      renderCharPicker();
+      setPlayerSprite();
+    });
+  });
+}
+
+function setPlayerSprite(){
+  const m = MONSTERS.find(x => x.id === gameState.selectedMonsterId);
+  if(!m) return;
+  document.getElementById('gamePlayer').innerHTML = `<div class="creature-wrap" style="width:100%;height:100%;">${buildCreatureHTML(m)}</div>`;
+}
+
+function positionPlayer(){
+  document.getElementById('gamePlayer').style.left = gameState.playerX + 'px';
+}
+
+function updateGameHud(){
+  document.getElementById('gameScore').textContent = gameState.score;
+  document.getElementById('gameLives').textContent = gameState.lives;
+  document.getElementById('gameBest').textContent = gameState.best;
+}
+
+function updatePowerupHud(){
+  const el = document.getElementById('powerupStatus');
+  if(!el) return;
+  let s = '';
+  if(gameState.elapsed < gameState.shieldUntil) s += '🛡️';
+  if(gameState.elapsed < gameState.magnetUntil) s += '🧲';
+  el.textContent = s;
+}
+
+function showStartOverlay(){
+  const overlay = document.getElementById('gameOverlay');
+  const m = MONSTERS.find(x => x.id === gameState.selectedMonsterId);
+  const perk = m ? getPerk(m.rarity) : null;
+  const perkText = perk && perk.text ? `<div style="font-size:12px; color:var(--rc); font-weight:800; margin-bottom:8px;">${m.name}의 능력 · ${perk.text}</div>` : '';
+  document.getElementById('gameOverlayInner').innerHTML = `
+    <div style="font-family:'Fraunces',serif; font-size:20px; font-weight:700; margin-bottom:8px;">도토리 캐치</div>
+    <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--paper-dim); margin-bottom:4px;">최고 점수 ${gameState.best}</div>
+    <div style="font-size:12px; color:var(--paper-dim); margin-bottom:6px;">🕳️ 지하 동굴 → 🌾 초원(100점) → ☁️ 하늘(200점) 순으로 테마가 바뀌어요</div>
+    <div style="font-size:12px; color:var(--paper-dim); margin-bottom:6px;">좋은 아이템은 잡고, 방해물 2종류는 피하세요 · ❤️는 생명 회복</div>
+    <div style="font-size:11.5px; color:var(--paper-dim); margin-bottom:6px;">연속 캐치 시 콤보 배율 상승! 100점엔 독수리가, 500점부턴 💎와 함께 훨씬 빨라져요.</div>
+    <div style="font-size:11.5px; color:var(--paper-dim); margin-bottom:6px;">🛡️ 무적(방해물 무시) · 🧲 자석(아이템 자동 흡수) 파워업도 떨어져요</div>
+    ${perkText}
+    <button class="btn btn-primary" id="gameStartBtn">게임 시작</button>
+  `;
+  overlay.classList.add('show');
+  document.getElementById('gameStartBtn').addEventListener('click', startGame);
+}
+
+function getPerk(rarity){
+  switch(rarity){
+    case 'rare': return { extraLife:true, scoreMult:1, hitboxBonus:0, text:'시작 생명 +1개 (총 2개)' };
+    case 'epic': return { extraLife:false, scoreMult:1.5, hitboxBonus:0, text:'모든 획득 점수 1.5배' };
+    case 'legendary': return { extraLife:true, scoreMult:1.5, hitboxBonus:5, text:'생명 +1 · 점수 1.5배 · 판정 확대' };
+    default: return { extraLife:false, scoreMult:1, hitboxBonus:0, text:'' };
+  }
+}
+
+function startGame(){
+  ensureAudio();
+  sfxGameStart();
+  const area = document.getElementById('gameArea');
+  const m = MONSTERS.find(x => x.id === gameState.selectedMonsterId);
+  gameState.perk = getPerk(m ? m.rarity : 'common');
+  gameState.charColors = m ? { a: m.a, b: m.b } : { a: '#f5b93d', b: '#c9803c' };
+  gameState.running = true;
+  gameState.score = 0;
+  gameState.combo = 0;
+  gameState.maxLives = 3;
+  gameState.lives = gameState.perk.extraLife ? 2 : 1;
+  gameState.frenzy = false;
+  gameState.items = [];
+  gameState.trailParticles = [];
+  gameState.trailSpawnAcc = 0;
+  gameState.shieldUntil = 0;
+  gameState.magnetUntil = 0;
+  gameState.spawnTimer = 0;
+  gameState.elapsed = 0;
+  gameState.scoreTickAcc = 0;
+  gameState.zoneKey = 'cave';
+  gameState.zoneBonusGiven = { ground:false, sky:false };
+  gameState.eagleTriggered = false;
+  gameState.playerX = area.clientWidth / 2;
+  gameState.speedLines = Array.from({length: 18}, () => ({
+    x: Math.random() * area.clientWidth,
+    y: Math.random() * area.clientHeight,
+    len: 24 + Math.random() * 34,
+  }));
+  area.classList.remove('frenzy');
+  document.getElementById('gameOverlay').classList.remove('show');
+  updateGameHud();
+  setPlayerSprite();
+  positionPlayer();
+  const canvas = document.getElementById('gameCanvas');
+  canvas.width = area.clientWidth;
+  canvas.height = area.clientHeight;
+  lastTs = null;
+  gameState.rafId = requestAnimationFrame(gameLoop);
+}
+
+const ZONES = [
+  { key:'cave',   name:'지하 동굴', min:0,   speedMult:1.0,  bg:['#221e30','#100e18'], emoji:{ common:'🍄', rare:'💎', obstacleA:'🪨', obstacleB:'💀' } },
+  { key:'ground', name:'초원',     min:100, speedMult:1.15, bg:['#2c3a26','#141c11'], emoji:{ common:'🌰', rare:'🍎', obstacleA:'🪨', obstacleB:'🌵' } },
+  { key:'sky',    name:'하늘',     min:200, speedMult:1.3,  bg:['#2c4a70','#12233a'], emoji:{ common:'⭐', rare:'✨', obstacleA:'☄️', obstacleB:'🗑️' } },
+];
+function getZone(score){
+  let z = ZONES[0];
+  for(const zone of ZONES){ if(score >= zone.min) z = zone; }
+  return z;
+}
+
+const ROLE_COLORS = { common:'#f5b93d', rare:'#6c9fd6', diamond:'#e0688f', heart:'#ff6b81', obstacleA:'#e0384f', obstacleB:'#e0384f', shield:'#6cf7c1', magnet:'#c17bff' };
+
+
+function spawnItem(w, zone){
+  const heartChance = gameState.lives < gameState.maxLives ? (gameState.score >= 100 ? 0.045 : 0.018) : 0;
+  const diamondChance = gameState.frenzy ? 0.09 : 0;
+  const roll = Math.random();
+  let role;
+  if(roll < heartChance){ role = 'heart'; }
+  else if(roll < heartChance + diamondChance){ role = 'diamond'; }
+  else{
+    const roll2 = Math.random();
+    if(roll2 < 0.14) role = 'rare';
+    else if(roll2 < 0.42) role = 'common';
+    else if(roll2 < 0.45) role = 'shield';
+    else if(roll2 < 0.48) role = 'magnet';
+    else if(roll2 < 0.74) role = 'obstacleA';
+    else role = 'obstacleB';
+  }
+  let emoji;
+  if(role === 'heart') emoji = '❤️';
+  else if(role === 'diamond') emoji = '💎';
+  else if(role === 'shield') emoji = '🛡️';
+  else if(role === 'magnet') emoji = '🧲';
+  else emoji = zone.emoji[role];
+  const speedMult = role === 'obstacleB' ? 1.35 : 1;
+  gameState.items.push({ x: 26 + Math.random() * (w - 52), y: -20, role, emoji, speedMult });
+}
+
+
+
+function spawnScorePop(x, y, text, color){
+  const area = document.getElementById('gameArea');
+  const pop = document.createElement('div');
+  pop.className = 'score-pop';
+  pop.textContent = text;
+  pop.style.left = x + 'px';
+  pop.style.top = y + 'px';
+  pop.style.color = color;
+  area.appendChild(pop);
+  setTimeout(() => pop.remove(), 720);
+}
+
+function updateComboBadge(){
+  const badge = document.getElementById('comboBadge');
+  if(!badge) return;
+  if(gameState.combo >= 2){
+    badge.textContent = `COMBO x${gameState.combo}`;
+    badge.classList.add('show');
+  } else {
+    badge.classList.remove('show');
+  }
+}
+
+function spawnShatterParticles(x, y){
+  const area = document.getElementById('gameArea');
+  const frag = document.createElement('div');
+  frag.className = 'burst';
+  frag.style.cssText = `position:absolute; left:${x}px; top:${y}px; right:auto; bottom:auto;`;
+  for(let i=0;i<12;i++){
+    const p = document.createElement('span');
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 28 + Math.random() * 36;
+    p.style.setProperty('--tx', `${Math.cos(angle)*dist}px`);
+    p.style.setProperty('--ty', `${Math.sin(angle)*dist}px`);
+    p.style.background = i % 2 === 0 ? '#cfc9dc' : '#8f899e';
+    frag.appendChild(p);
+  }
+  area.appendChild(frag);
+  setTimeout(() => frag.remove(), 700);
+}
+
+function triggerShatter(){
+  const player = document.getElementById('gamePlayer');
+  const area = document.getElementById('gameArea');
+  player.classList.add('shatter');
+  area.classList.add('shake');
+  spawnShatterParticles(gameState.playerX, area.clientHeight - 48);
+  setTimeout(() => { player.classList.remove('shatter'); area.classList.remove('shake'); }, 380);
+}
+
+function gameLoop(ts){
+  if(!gameState.running) return;
+  if(lastTs === null) lastTs = ts;
+  const dt = Math.min(ts - lastTs, 50);
+  lastTs = ts;
+  gameState.elapsed += dt;
+
+  const area = document.getElementById('gameArea');
+  const w = area.clientWidth, h = area.clientHeight;
+
+  const moveSpeed = 0.72 * dt;
+  if(keys.left) gameState.playerX -= moveSpeed;
+  if(keys.right) gameState.playerX += moveSpeed;
+  gameState.playerX = Math.max(26, Math.min(w - 26, gameState.playerX));
+  positionPlayer();
+
+  if(!gameState.frenzy && gameState.score >= 500){
+    gameState.frenzy = true;
+    area.classList.add('frenzy');
+  }
+
+  const zone = getZone(gameState.score);
+  if(zone.key !== gameState.zoneKey){
+    gameState.zoneKey = zone.key;
+    showToast(`${zone.name} 진입!`);
+    if(zone.key === 'ground' && !gameState.zoneBonusGiven.ground){
+      gameState.zoneBonusGiven.ground = true;
+      gameState.items.push({ x: gameState.playerX, y: -20, role:'heart', emoji:'❤️', speedMult:0.8 });
+      if(!gameState.eagleTriggered){ gameState.eagleTriggered = true; triggerEagleEvent(); }
+    }
+    if(zone.key === 'sky' && !gameState.zoneBonusGiven.sky){
+      gameState.zoneBonusGiven.sky = true;
+    }
+  }
+
+  gameState.scoreTickAcc += dt;
+  if(gameState.scoreTickAcc >= 2000){
+    gameState.scoreTickAcc -= 2000;
+    gameState.score += 1;
+    updateGameHud();
+  }
+
+  const difficulty = Math.min(gameState.elapsed / 6000, 1);
+  const spawnInterval = 430 - difficulty * 300;
+  const fallSpeed = (0.2 + difficulty * 0.22) * zone.speedMult;
+
+  gameState.spawnTimer += dt;
+  if(gameState.spawnTimer > spawnInterval){
+    gameState.spawnTimer = 0;
+    spawnItem(w, zone);
+  }
+
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, zone.bg[0]);
+  grad.addColorStop(1, zone.bg[1]);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  const lineSpeed = (0.35 + fallSpeed) * dt;
+  ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+  ctx.lineWidth = 2;
+  gameState.speedLines.forEach(line => {
+    line.y += lineSpeed;
+    if(line.y > h){ line.y = -line.len; line.x = Math.random() * w; }
+    ctx.beginPath();
+    ctx.moveTo(line.x, line.y);
+    ctx.lineTo(line.x, line.y + line.len);
+    ctx.stroke();
+  });
+
+  const playerY = h - 46;
+  const hitRadius = 20 + (gameState.perk ? gameState.perk.hitboxBonus * 0.6 : 0);
+
+  // 캐릭터 고유 색상 트레일
+  gameState.trailSpawnAcc += dt;
+  const trailInterval = gameState.combo >= 5 ? 35 : 65;
+  if(gameState.trailSpawnAcc > trailInterval){
+    gameState.trailSpawnAcc = 0;
+    gameState.trailParticles.push({
+      x: gameState.playerX + (Math.random() * 16 - 8),
+      y: playerY + 6 + (Math.random() * 8 - 4),
+      life: 420, maxLife: 420,
+      r: 5 + Math.random() * 4,
+      color: Math.random() < 0.5 ? gameState.charColors.a : gameState.charColors.b,
+    });
+  }
+  gameState.trailParticles = gameState.trailParticles.filter(p => {
+    p.life -= dt;
+    if(p.life <= 0) return false;
+    const t = p.life / p.maxLife;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r * t, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = t * 0.5;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    return true;
+  });
+
+  const shieldActive = gameState.elapsed < gameState.shieldUntil;
+
+  function applyGoodItemEffect(it){
+    if(it.role === 'heart'){
+      gameState.lives = Math.min(gameState.maxLives, gameState.lives + 1);
+      sfxCatch('heart');
+      spawnScorePop(it.x, it.y, '+생명', ROLE_COLORS.heart);
+    } else {
+      gameState.combo += 1;
+      const comboMult = 1 + Math.min(gameState.combo, 10) * 0.08;
+      const base = it.role === 'diamond' ? 5 : (it.role === 'rare' ? 3 : 1);
+      const gained = Math.round(base * gameState.perk.scoreMult * comboMult);
+      gameState.score += gained;
+      sfxCatch(it.role);
+      spawnScorePop(it.x, it.y, `+${gained}`, ROLE_COLORS[it.role] || '#f5b93d');
+      updateComboBadge();
+    }
+  }
+
+  let gameOverTriggered = false;
+  gameState.items = gameState.items.filter(it => {
+    if(it.beingSwept){
+      it.x += (gameState.playerX - it.x) * Math.min(1, dt * 0.02);
+      it.y += (playerY - it.y) * Math.min(1, dt * 0.02);
+
+      ctx.beginPath();
+      ctx.arc(it.x, it.y, 18, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(20,18,28,0.85)';
+      ctx.fill();
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = ROLE_COLORS[it.role];
+      ctx.stroke();
+      ctx.font = '26px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+      ctx.strokeText(it.emoji, it.x, it.y + 1);
+      ctx.fillText(it.emoji, it.x, it.y + 1);
+
+      if(gameState.elapsed >= it.sweepAt){
+        applyGoodItemEffect(it);
+        updateGameHud();
+        return false;
+      }
+      return true;
+    }
+
+    it.y += fallSpeed * dt * (it.speedMult || 1);
+
+    ctx.beginPath();
+    ctx.arc(it.x, it.y, 18, 0, Math.PI * 2);
+    ctx.fillStyle = (it.role === 'obstacleA' || it.role === 'obstacleB') ? 'rgba(50,20,26,0.92)' : 'rgba(20,18,28,0.85)';
+    ctx.fill();
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = ROLE_COLORS[it.role];
+    ctx.stroke();
+
+    ctx.font = '26px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+    ctx.strokeText(it.emoji, it.x, it.y + 1);
+    ctx.fillText(it.emoji, it.x, it.y + 1);
+
+    if(it.y > playerY - 20 && it.y < playerY + 22 && Math.abs(it.x - gameState.playerX) < hitRadius + 8){
+      if(it.role === 'obstacleA' || it.role === 'obstacleB'){
+        if(shieldActive){
+          sfxCatch('shieldBlock');
+          spawnScorePop(it.x, it.y, '막음!', ROLE_COLORS.shield);
+        } else {
+          gameState.combo = 0;
+          updateComboBadge();
+          gameState.lives -= 1;
+          triggerShatter();
+          sfxHit();
+          if(gameState.lives <= 0) gameOverTriggered = true;
+        }
+      } else if(it.role === 'shield'){
+        gameState.shieldUntil = gameState.elapsed + 4000;
+        sfxCatch('shield');
+        spawnScorePop(it.x, it.y, '무적!', ROLE_COLORS.shield);
+      } else if(it.role === 'magnet'){
+        gameState.magnetUntil = gameState.elapsed + 1300;
+        sfxCatch('magnet');
+        spawnScorePop(it.x, it.y, '자석!', ROLE_COLORS.magnet);
+        triggerMagnetSweep();
+      } else {
+        applyGoodItemEffect(it);
+      }
+      updateGameHud();
+      return false;
+    }
+    return it.y < h + 40;
+  });
+
+  updatePowerupHud();
+  if(gameOverTriggered){ endGame(); return; }
+  if(gameState.running) gameState.rafId = requestAnimationFrame(gameLoop);
+}
+
+function triggerMagnetSweep(){
+  const eligible = gameState.items.filter(it => !it.beingSwept && ['common','rare','diamond','heart'].includes(it.role));
+  eligible.forEach((it, i) => {
+    it.beingSwept = true;
+    const spread = eligible.length > 1 ? (i / (eligible.length - 1)) : 0;
+    it.sweepAt = gameState.elapsed + 150 + spread * 950;
+  });
+}
+
+function triggerEagleEvent(){
+  const area = document.getElementById('gameArea');
+  const eagle = document.createElement('div');
+  eagle.className = 'eagle-event';
+  eagle.textContent = '🦅';
+  eagle.style.fontSize = Math.round(area.clientHeight * 0.34) + 'px';
+  area.appendChild(eagle);
+  setTimeout(() => eagle.remove(), 3300);
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function getPlayerName(){
+  try{ const r = await window.storage.get('player-name'); if(r && r.value) return r.value; }
+  catch(e){ /* 없음 */ }
+  return null;
+}
+async function setPlayerName(name){
+  try{ await window.storage.set('player-name', name); } catch(e){ console.error(e); }
+}
+async function loadLeaderboard(){
+  try{ const r = await window.storage.get('leaderboard', true); if(r && r.value) return JSON.parse(r.value); }
+  catch(e){ /* 없음 */ }
+  return [];
+}
+async function submitScore(name, score){
+  let list = await loadLeaderboard();
+  const idx = list.findIndex(e => e.name === name);
+  if(idx >= 0){ if(score > list[idx].score) list[idx].score = score; }
+  else list.push({ name, score });
+  list.sort((a,b) => b.score - a.score);
+  list = list.slice(0, 30);
+  try{ await window.storage.set('leaderboard', JSON.stringify(list), true); }
+  catch(e){ console.error(e); }
+  return list;
+}
+
+function promptNickname(){
+  return new Promise(resolve => {
+    document.getElementById('gameOverlayInner').innerHTML = `
+      <div style="font-family:'Fraunces',serif; font-size:18px; font-weight:700; margin-bottom:10px;">닉네임을 알려주세요</div>
+      <div style="font-size:12px; color:var(--paper-dim); margin-bottom:12px;">순위표에 표시돼요. 다른 사람에게도 공개돼요.</div>
+      <input id="nicknameInput" class="nickname-input" maxlength="10" placeholder="닉네임 입력" />
+      <br/>
+      <button class="btn btn-primary" id="nicknameConfirmBtn">확인</button>
+    `;
+    document.getElementById('gameOverlay').classList.add('show');
+    const input = document.getElementById('nicknameInput');
+    input.focus();
+    const confirm = () => resolve((input.value || '').trim().slice(0, 10) || '익명몬스터');
+    document.getElementById('nicknameConfirmBtn').addEventListener('click', confirm);
+    input.addEventListener('keydown', e => { if(e.key === 'Enter') confirm(); });
+  });
+}
+
+async function endGame(){
+  gameState.running = false;
+  if(gameState.rafId) cancelAnimationFrame(gameState.rafId);
+  sfxGameOver();
+
+  let newBest = false;
+  if(gameState.score > gameState.best){
+    gameState.best = gameState.score;
+    newBest = true;
+    await saveBest();
+  }
+  updateGameHud();
+
+  let bonusMsg = '';
+  const today = todayStr();
+  if(newBest && state.gameBonusDate !== today){
+    state.gameBonusDate = today;
+    state.freePulls += 1;
+    await saveState();
+    updateButtons();
+    bonusMsg = `<div style="color:var(--amber); font-family:'JetBrains Mono',monospace; font-size:12px; margin-top:8px;">🎁 신기록 달성 보너스! 무료 뽑기 +1</div>`;
+  }
+
+  let name = await getPlayerName();
+  if(!name){
+    name = await promptNickname();
+    await setPlayerName(name);
+  }
+  const list = await submitScore(name, gameState.score);
+  const myRank = list.findIndex(e => e.name === name) + 1;
+  const top = list.slice(0, 5);
+  const lbRows = top.map((e,i) => `<div class="lb-row ${e.name===name?'me':''}"><span>${i+1}. ${escapeHtml(e.name)}</span><span>${e.score}</span></div>`).join('');
+  const myRow = myRank > 5 ? `<div class="lb-row me">${myRank}. ${escapeHtml(name)}(나)<span>${gameState.score}</span></div>` : '';
+  const leaderboardHtml = `<div class="leaderboard"><div class="lb-title">🏆 순위표</div>${lbRows}${myRow}</div>`;
+
+  document.getElementById('gameOverlayInner').innerHTML = `
+    <div style="font-family:'Fraunces',serif; font-size:22px; font-weight:700; margin-bottom:6px;">게임 종료</div>
+    <div style="font-family:'JetBrains Mono',monospace; font-size:14px; color:var(--paper-dim);">이번 점수 <b style="color:var(--paper)">${gameState.score}</b>${newBest ? ' · 신기록!' : ''}</div>
+    ${bonusMsg}
+    ${leaderboardHtml}
+    <button class="btn btn-primary" id="gameRestartBtn" style="margin-top:16px;">다시하기</button>
+  `;
+  document.getElementById('gameOverlay').classList.add('show');
+  document.getElementById('gameRestartBtn').addEventListener('click', startGame);
+}
+
+function setupGameControls(){
+  document.addEventListener('keydown', e => {
+    if(e.key === 'ArrowLeft') keys.left = true;
+    if(e.key === 'ArrowRight') keys.right = true;
+  });
+  document.addEventListener('keyup', e => {
+    if(e.key === 'ArrowLeft') keys.left = false;
+    if(e.key === 'ArrowRight') keys.right = false;
+  });
+  const area = document.getElementById('gameArea');
+  let dragging = false;
+  const moveTo = (clientX) => {
+    const rect = area.getBoundingClientRect();
+    gameState.playerX = Math.max(28, Math.min(rect.width - 28, clientX - rect.left));
+    positionPlayer();
+  };
+  area.addEventListener('pointerdown', e => { dragging = true; moveTo(e.clientX); });
+  area.addEventListener('pointermove', e => { if(dragging) moveTo(e.clientX); });
+  window.addEventListener('pointerup', () => { dragging = false; });
+}
+
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-' + btn.dataset.tab).classList.add('active');
+
+    if(btn.dataset.tab === 'game'){
+      renderCharPicker();
+      setPlayerSprite();
+      if(!gameState.running) showStartOverlay();
+    } else if(gameState.running){
+      gameState.running = false;
+      if(gameState.rafId) cancelAnimationFrame(gameState.rafId);
+    }
+  });
+});
+
+document.getElementById('freePullBtn').onclick = handleFreePull;
+document.getElementById('adPullBtn').onclick = handleAdPull;
+document.getElementById('modalOverlay').addEventListener('click', (e) => {
+  if(e.target.id === 'modalOverlay') closeModal();
+});
+document.getElementById('musicToggle').addEventListener('click', toggleMusic);
+
+setupGameControls();
+loadBest().then(updateGameHud);
+loadState();
+</script>
+</body>
+</html>
