@@ -489,6 +489,7 @@ body{
     프로토타입 안내 · 뽑기 결과와 도감은 이 브라우저에 저장되어 다시 방문해도 유지돼요.
     "광고 보고 뽑기"는 실제 광고 SDK 연동 전 목업이며, 지금은 2초 대기로 대체되어 있어요.
     무료/광고 뽑기 횟수는 매일 초기화됩니다. 몬스터 일러스트는 전부 코드로 그린 오리지널 SVG예요.
+    <div style="margin-top:8px; font-family:'JetBrains Mono',monospace; font-size:10px; opacity:0.6;">파일 버전: <span id="versionTag"></span></div>
   </div>
 
 </div>
@@ -755,7 +756,7 @@ function toggleMusic(){
 }
 
 /* ---------------- 게임 상태 & 로직 ---------------- */
-const APP_VERSION = 'v13';
+const APP_VERSION = 'v14';
 let state = { date:'', freePulls:3, adPulls:5, dex:{}, streak:1, firstPullDone:false, claimedMilestones:[], version:APP_VERSION };
 
 function todayStr(){ return new Date().toISOString().slice(0,10); }
@@ -1030,26 +1031,19 @@ function runPullSequence(guarantee, triggerBtn, originalHandler){
     if(finished) return;
     finished = true;
     if(pendingTimeout) clearTimeout(pendingTimeout);
-
-    // 스킵 시점과 무관하게 항상 슬롯을 다시 랜덤 배정
-    const perm = [0, 1, 2];
-    for(let i = perm.length - 1; i > 0; i--){
-      const j = Math.floor(Math.random() * (i + 1));
-      [perm[i], perm[j]] = [perm[j], perm[i]];
-    }
-    row.querySelectorAll('.shuffle-card').forEach(el => {
-      const ci = parseInt(el.dataset.ci);
-      slotOf[ci] = perm[ci];
-      el.style.transition = 'left 0.3s cubic-bezier(.4,.05,.2,1)';
-      el.style.left = xForSlot(perm[ci]) + 'px';
-      el.innerHTML = `<div class="card-back">?</div>`;
-    });
-
-    setTimeout(() => {
-      document.getElementById('shuffleHint').textContent = '하나를 골라보세요!';
-      enablePicking();
-    }, 320);
     restoreButton();
+
+    // 빨리감기: 클릭 대기 없이 3개 중 하나를 즉시 랜덤으로 확정
+    const chosenIndex = Math.floor(Math.random() * 3);
+    const chosen = candidates[chosenIndex];
+    document.getElementById('shuffleHint').textContent = '';
+    row.querySelectorAll('.shuffle-card').forEach(el => {
+      el.style.transition = 'transform 0.25s ease, opacity 0.25s ease';
+      el.style.transform = 'scale(0.9)';
+      el.style.opacity = '0.4';
+    });
+    sfxReveal(chosen.rarity);
+    finalizePull(chosen, { firstBonus: !!guarantee });
   }
 
   if(triggerBtn){
@@ -1870,6 +1864,7 @@ document.getElementById('musicToggle').addEventListener('click', toggleMusic);
 
 setupGameControls();
 loadBest().then(updateGameHud);
+document.getElementById('versionTag').textContent = APP_VERSION;
 loadState();
 </script>
 </body>
