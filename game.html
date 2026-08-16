@@ -294,7 +294,13 @@ body{
   width:180px; flex:0 0 auto; background:var(--ink-soft); border:1px solid var(--line);
   border-radius:12px; padding:12px; font-family:'JetBrains Mono',monospace; font-size:11.5px;
 }
-.live-leaderboard .lb-title{ font-weight:700; color:var(--amber); margin-bottom:8px; text-align:center; }
+.live-leaderboard .lb-title{
+  font-weight:700; color:var(--amber); margin-bottom:8px; text-align:center;
+  cursor:pointer; list-style:none; position:relative;
+}
+.live-leaderboard .lb-title::-webkit-details-marker{ display:none; }
+.live-leaderboard .lb-title::after{ content:'▾'; margin-left:6px; }
+.live-leaderboard[open] .lb-title::after{ content:'▴'; }
 @media (max-width: 680px){
   .game-layout{ flex-direction:column; }
   .live-leaderboard{ width:100%; }
@@ -387,8 +393,6 @@ body{
   padding:1px 7px; border-radius:10px; border:1px solid var(--line);
 }
 .lb-name.rank-1{ border-color:#f0c445; box-shadow:0 0 5px rgba(240,196,69,0.55); color:#f7d878; }
-.lb-name.rank-2{ border-color:#c7ccd6; box-shadow:0 0 5px rgba(199,204,214,0.4); color:#dfe2e8; }
-.lb-name.rank-3{ border-color:#c98a4b; box-shadow:0 0 5px rgba(201,138,75,0.4); color:#dba26a; }
 .lb-score{ flex:0 0 auto; }
 .nickname-input{
   font-family:'Nunito',sans-serif; font-size:14px; padding:10px 12px; border-radius:8px;
@@ -468,12 +472,12 @@ body{
           <div id="gameOverlayInner"></div>
         </div>
       </div>
-      <div class="live-leaderboard">
-        <div class="lb-title">🏆 실시간 순위</div>
+      <details class="live-leaderboard" open>
+        <summary class="lb-title">🏆 실시간 순위</summary>
         <div id="liveLbList">
           <div style="color:var(--paper-dim);">불러오는 중...</div>
         </div>
-      </div>
+      </details>
     </div>
     <div class="game-hint">← → 키 또는 드래그로 이동 · 빠르게 연속으로 먹을수록 강해져요 · 🛡️/🧲 파워업 · 100/200점마다 테마 변경</div>
   </div>
@@ -756,7 +760,7 @@ function toggleMusic(){
 }
 
 /* ---------------- 게임 상태 & 로직 ---------------- */
-const APP_VERSION = 'v14';
+const APP_VERSION = 'v16';
 let state = { date:'', freePulls:3, adPulls:5, dex:{}, streak:1, firstPullDone:false, claimedMilestones:[], version:APP_VERSION };
 
 function todayStr(){ return new Date().toISOString().slice(0,10); }
@@ -770,8 +774,8 @@ let pendingToast = null;
 
 async function loadState(){
   try{
-    const res = await window.storage.get('player-state');
-    if(res && res.value) state = JSON.parse(res.value);
+    const raw = localStorage.getItem('player-state');
+    if(raw) state = JSON.parse(raw);
   }catch(e){ /* 최초 방문 */ }
   if(state.version !== APP_VERSION){
     state = { date:'', freePulls:3, adPulls:5, dex:{}, streak:1, firstPullDone:false, claimedMilestones:[], version:APP_VERSION };
@@ -796,7 +800,7 @@ async function loadState(){
 }
 
 async function saveState(){
-  try{ await window.storage.set('player-state', JSON.stringify(state)); }
+  try{ localStorage.setItem('player-state', JSON.stringify(state)); }
   catch(e){ console.error('save failed', e); }
 }
 
@@ -1033,17 +1037,21 @@ function runPullSequence(guarantee, triggerBtn, originalHandler){
     if(pendingTimeout) clearTimeout(pendingTimeout);
     restoreButton();
 
-    // 빨리감기: 클릭 대기 없이 3개 중 하나를 즉시 랜덤으로 확정
-    const chosenIndex = Math.floor(Math.random() * 3);
-    const chosen = candidates[chosenIndex];
-    document.getElementById('shuffleHint').textContent = '';
+    // 빨리감기: 셔플만 즉시 끝내고, 정상 흐름처럼 카드는 사용자가 직접 고름
+    const perm = [0, 1, 2];
+    for(let i = perm.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [perm[i], perm[j]] = [perm[j], perm[i]];
+    }
     row.querySelectorAll('.shuffle-card').forEach(el => {
-      el.style.transition = 'transform 0.25s ease, opacity 0.25s ease';
-      el.style.transform = 'scale(0.9)';
-      el.style.opacity = '0.4';
+      const ci = parseInt(el.dataset.ci);
+      slotOf[ci] = perm[ci];
+      el.style.transition = 'left 0.25s ease';
+      el.style.left = xForSlot(perm[ci]) + 'px';
+      el.innerHTML = `<div class="card-back">?</div>`;
     });
-    sfxReveal(chosen.rarity);
-    finalizePull(chosen, { firstBonus: !!guarantee });
+    document.getElementById('shuffleHint').textContent = '하나를 골라보세요!';
+    enablePicking();
   }
 
   if(triggerBtn){
@@ -1160,12 +1168,12 @@ let lastTs = null;
 
 async function loadBest(){
   try{
-    const r = await window.storage.get('game-best');
-    if(r && r.value) gameState.best = parseInt(r.value) || 0;
+    const raw = localStorage.getItem('game-best');
+    if(raw) gameState.best = parseInt(raw) || 0;
   }catch(e){ /* 기록 없음 */ }
 }
 async function saveBest(){
-  try{ await window.storage.set('game-best', String(gameState.best)); }
+  try{ localStorage.setItem('game-best', String(gameState.best)); }
   catch(e){ console.error('best save failed', e); }
 }
 
@@ -1688,32 +1696,62 @@ function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+/* ---------------- Firebase 설정 ----------------
+   Firebase 콘솔에서 Realtime Database를 만든 뒤,
+   상단에 표시되는 데이터베이스 URL을 아래 따옴표 안에 넣어주세요.
+   예: 'https://dototi-catch-default-rtdb.asia-southeast1.firebasedatabase.app'
+------------------------------------------------- */
+const FIREBASE_DB_URL = 'https://dototi-catch-default-rtdb.firebaseio.com';
+
+function getPlayerUid(){
+  let uid = localStorage.getItem('player-uid');
+  if(!uid){
+    uid = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    localStorage.setItem('player-uid', uid);
+  }
+  return uid;
+}
+
 async function getPlayerName(){
-  try{ const r = await window.storage.get('player-name'); if(r && r.value) return r.value; }
-  catch(e){ /* 없음 */ }
-  return null;
+  try{ return localStorage.getItem('player-name'); }
+  catch(e){ return null; }
 }
 async function setPlayerName(name){
-  try{ await window.storage.set('player-name', name); } catch(e){ console.error(e); }
+  try{ localStorage.setItem('player-name', name); } catch(e){ console.error(e); }
 }
+
+function firebaseConfigured(){
+  return FIREBASE_DB_URL && !FIREBASE_DB_URL.includes('YOUR-PROJECT');
+}
+
 async function loadLeaderboard(){
-  try{ const r = await window.storage.get('leaderboard', true); if(r && r.value) return JSON.parse(r.value); }
-  catch(e){ /* 없음 */ }
-  return [];
+  if(!firebaseConfigured()) return [];
+  try{
+    const res = await fetch(`${FIREBASE_DB_URL}/leaderboard.json`);
+    const data = await res.json();
+    if(!data) return [];
+    return Object.values(data).sort((a, b) => b.score - a.score);
+  }catch(e){ console.error('leaderboard load failed', e); return []; }
 }
+
 async function submitScore(name, score, charId){
-  let list = await loadLeaderboard();
-  const idx = list.findIndex(e => e.name === name);
-  if(idx >= 0){
-    if(score > list[idx].score){ list[idx].score = score; list[idx].charId = charId; }
-  } else {
-    list.push({ name, score, charId });
+  if(!firebaseConfigured()){
+    console.warn('Firebase 데이터베이스 주소가 설정되지 않아 순위표를 저장할 수 없어요.');
+    return loadLeaderboard();
   }
-  list.sort((a,b) => b.score - a.score);
-  list = list.slice(0, 30);
-  try{ await window.storage.set('leaderboard', JSON.stringify(list), true); }
-  catch(e){ console.error(e); }
-  return list;
+  const uid = getPlayerUid();
+  try{
+    const res = await fetch(`${FIREBASE_DB_URL}/leaderboard/${uid}.json`);
+    const existing = await res.json();
+    if(!existing || score > existing.score){
+      await fetch(`${FIREBASE_DB_URL}/leaderboard/${uid}.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, score, charId }),
+      });
+    }
+  }catch(e){ console.error('submit score failed', e); }
+  return loadLeaderboard();
 }
 
 function lbCharIcon(charId){
@@ -1723,15 +1761,19 @@ function lbCharIcon(charId){
 }
 
 function rankClass(i){
-  return i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : '';
+  return i === 0 ? 'rank-1' : '';
 }
 
 let liveLbInterval = null;
 async function refreshLiveLeaderboard(){
   const wrap = document.getElementById('liveLbList');
   if(!wrap) return;
+  if(!firebaseConfigured()){
+    wrap.innerHTML = `<div style="color:var(--paper-dim);">순위표 서버 설정 중이에요</div>`;
+    return;
+  }
   const list = await loadLeaderboard();
-  const top = list.slice(0, 10);
+  const top = list.slice(0, 5);
   if(top.length === 0){
     wrap.innerHTML = `<div style="color:var(--paper-dim);">아직 기록이 없어요</div>`;
     return;
